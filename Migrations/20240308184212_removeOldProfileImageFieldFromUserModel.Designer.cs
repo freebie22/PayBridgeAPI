@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PayBridgeAPI.Data;
 
@@ -11,9 +12,11 @@ using PayBridgeAPI.Data;
 namespace PayBridgeAPI.Migrations
 {
     [DbContext(typeof(PayBridgeDbContext))]
-    partial class PayBridgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240308184212_removeOldProfileImageFieldFromUserModel")]
+    partial class removeOldProfileImageFieldFromUserModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -599,9 +602,6 @@ namespace PayBridgeAPI.Migrations
             modelBuilder.Entity("PayBridgeAPI.Models.User.ApplicationUser", b =>
                 {
                     b.HasBaseType("Microsoft.AspNetCore.Identity.IdentityUser");
-
-                    b.Property<byte[]>("ProfileImage")
-                        .HasColumnType("varbinary(max)");
 
                     b.Property<DateTime>("RegistrationDate")
                         .HasColumnType("datetime2");

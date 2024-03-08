@@ -4,7 +4,7 @@ namespace PayBridgeAPI.Models.User
 {
     public class ApplicationUser : IdentityUser
     {
-        public DateTime RegistrationDate { get; set; }
-        public byte?[] ProfileImage { get; set; }
+        public DateTime RegistrationDate { get; set; } = DateTime.Now;
+        public byte[] ProfileImage { get; set; }
     }
 }
