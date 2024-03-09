@@ -13,6 +13,7 @@ namespace PayBridgeAPI.Controllers
     {
         private readonly IUserRepository _userRepository;
         protected APIResponse _response;
+        
 
         public AuthController(IUserRepository userRepository)
         {

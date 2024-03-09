@@ -6,16 +6,19 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PayBridgeAPI.Data;
 using PayBridgeAPI.Models.User;
+using PayBridgeAPI.Repository;
+using PayBridgeAPI.Repository.MainRepo;
 using PayBridgeAPI.Repository.UserRepo;
 using PayBridgeAPI.Services.AzureBlobs;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 var key = builder.Configuration.GetValue<string>("ApiSetting:Secret");
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddAuthentication(options =>
 {
@@ -79,6 +82,8 @@ builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddSingleton(u => new BlobServiceClient(builder.Configuration.GetConnectionString("ServiceClient")));
 builder.Services.AddSingleton<IBlobService, BlobService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped(typeof(IManagerRepository), typeof(ManagerRepository));
 
 var app = builder.Build();
 

@@ -22,8 +22,12 @@ namespace PayBridgeAPI.Models.MainModels
         [Required]
         public string Description { get; set; }
         [Required]
+        public bool IsActive { get; set; } = false;
+        [Required]
         public string UserId { get; set; }
         [ForeignKey(nameof(UserId))]
         public virtual ApplicationUser User { get; set; }
     }
+
+   
 }
