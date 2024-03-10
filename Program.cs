@@ -84,6 +84,7 @@ builder.Services.AddSingleton<IBlobService, BlobService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped(typeof(IManagerRepository), typeof(ManagerRepository));
+builder.Services.AddScoped<IBankRepository, BankRepository>();
 
 var app = builder.Build();
 

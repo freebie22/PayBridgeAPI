@@ -1,13 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using PayBridgeAPI.Models.MainModels;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
 
-namespace PayBridgeAPI.Models.MainModels
+namespace PayBridgeAPI.Models.DTO
 {
-    public class Bank
+    public class BankCreateDTO
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int BankId { get; set; }
         [Required]
         public string FullBankName { get; set; }
         [Required]
@@ -25,28 +23,17 @@ namespace PayBridgeAPI.Models.MainModels
         [Required]
         public string NationalBankLicense { get; set; }
         [Required]
-        public string RegistraionNumber { get; set; } = Guid.NewGuid().ToString();
+        public string SWIFTCode { get; set; }
         [Required]
         public string HeadquarterAddress { get; set; }
+        [Required]
+        public string EstablishedDate { get; set; }
         [Required]
         public string ContactNumber { get; set; }
         [Required]
         public string ContactEmail { get; set; }
         [Required]
         public string WebsiteURL { get; set; }
-        public bool EmailConfirmed { get; set; }
-        [Required]
-        [Column(TypeName = "Date")]
-        public DateTime EstablishedDate { get; set; }
-        [Required]
-        public string SWIFTCode { get; set; }
-        [Required]
-        public bool IsActive { get; set; }
-        [Required]
-        public string Status { get; set; }
-        [Required]
-        public DateTime RegistrationDate { get; set; } = DateTime.Now;
-        public ICollection<CorparateBankAccount> CorparateBankAccounts { get; set;}
-        public ICollection<PersonalBankAccount> PersonalBankAccounts { get; set;}
+
     }
 }
