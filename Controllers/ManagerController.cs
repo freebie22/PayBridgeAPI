@@ -134,7 +134,7 @@ namespace PayBridgeAPI.Controllers
                     throw new ArgumentNullException(nameof(managerDTO), "Error. Manager parameter was null");
                 }
 
-                var isUniqueUserId = _userManager.FindByIdAsync(managerDTO.UserId);
+                var isUniqueUserId = await _repository.GetValueAsync(i => i.UserId == managerDTO.UserId);
 
                 if (isUniqueUserId != null)
                 {

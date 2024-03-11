@@ -85,6 +85,8 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped(typeof(IManagerRepository), typeof(ManagerRepository));
 builder.Services.AddScoped<IBankRepository, BankRepository>();
+builder.Services.AddScoped<IPersonalAccountRepository, PersonalAccountRepository>();
+builder.Services.AddScoped<ICorporateAccountRepository, CorporateAccountRepository>();
 
 var app = builder.Build();
 

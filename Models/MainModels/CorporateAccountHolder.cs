@@ -13,8 +13,6 @@ namespace PayBridgeAPI.Models.MainModels
         public string ShortCompanyName { get; set; }
         [Required]
         public string FullCompanyName { get; set; }
-        [Required]
-        public string EnglishName { get; set; }
         [Required] 
         public string CompanyCode { get; set; }
         [Required] 

@@ -124,6 +124,11 @@ namespace PayBridgeAPI.Repository.UserRepo
                 user.ProfileImage = Encoding.ASCII.GetBytes(await _blobService.UpdateBlob(image, registerInfo.ProfileImage));
             }
 
+            else
+            {
+                user.ProfileImage = Encoding.ASCII.GetBytes("No image");
+            }
+
 
             var result = await _userManager.CreateAsync(user, registerInfo.Password);
             if(result.Succeeded)
