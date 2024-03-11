@@ -17,6 +17,7 @@ namespace PayBridgeAPI.Controllers
     public class BankController : ControllerBase
     {
         private readonly IBankRepository _repository;
+
         protected APIResponse _response;
 
         public BankController(IBankRepository repository)

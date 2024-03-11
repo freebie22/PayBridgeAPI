@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PayBridgeAPI.Data;
 
@@ -11,9 +12,11 @@ using PayBridgeAPI.Data;
 namespace PayBridgeAPI.Migrations
 {
     [DbContext(typeof(PayBridgeDbContext))]
-    partial class PayBridgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240311131302_addedSomeChangesToPersonalBankAccountModel")]
+    partial class addedSomeChangesToPersonalBankAccountModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -320,6 +323,8 @@ namespace PayBridgeAPI.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BankCardId"));
+
                     b.Property<decimal>("Balance")
                         .HasColumnType("decimal(18,2)");
 
@@ -348,7 +353,45 @@ namespace PayBridgeAPI.Migrations
 
                     b.HasKey("BankCardId");
 
+                    b.HasIndex("BankAccountId");
+
                     b.ToTable("BankCards");
+                });
+
+            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorparateBankAccount", b =>
+                {
+                    b.Property<int>("AccountId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AccountId"));
+
+                    b.Property<string>("AccountNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("BankId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CurrencyType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RegistrationDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AccountId");
+
+                    b.HasIndex("BankId");
+
+                    b.ToTable("CorparateBankAccounts");
                 });
 
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateAccountHolder", b =>
@@ -389,9 +432,6 @@ namespace PayBridgeAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
                     b.Property<int>("ManagerId")
                         .HasColumnType("int");
 
@@ -406,11 +446,11 @@ namespace PayBridgeAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("StreetAddress")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("StreetAddress")
+                    b.Property<string>("TypesOfActivity")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -419,52 +459,6 @@ namespace PayBridgeAPI.Migrations
                     b.HasIndex("ManagerId");
 
                     b.ToTable("CorporateAccountHolders");
-                });
-
-            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateBankAccount", b =>
-                {
-                    b.Property<int>("AccountId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AccountId"));
-
-                    b.Property<string>("AccountNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("AccountOwnerId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("AccountType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("Balance")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("BankId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CurrencyType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ManagerId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("RegistrationDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("AccountId");
-
-                    b.HasIndex("AccountOwnerId");
-
-                    b.HasIndex("BankId");
-
-                    b.HasIndex("ManagerId");
-
-                    b.ToTable("CorporateBankAccounts");
                 });
 
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.Manager", b =>
@@ -691,11 +685,22 @@ namespace PayBridgeAPI.Migrations
                 {
                     b.HasOne("PayBridgeAPI.Models.MainModels.PersonalBankAccount", "Account")
                         .WithMany("BankCards")
-                        .HasForeignKey("BankCardId")
+                        .HasForeignKey("BankAccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Account");
+                });
+
+            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorparateBankAccount", b =>
+                {
+                    b.HasOne("PayBridgeAPI.Models.MainModels.Bank", "Bank")
+                        .WithMany("CorparateBankAccounts")
+                        .HasForeignKey("BankId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bank");
                 });
 
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateAccountHolder", b =>
@@ -705,33 +710,6 @@ namespace PayBridgeAPI.Migrations
                         .HasForeignKey("ManagerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Manager");
-                });
-
-            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateBankAccount", b =>
-                {
-                    b.HasOne("PayBridgeAPI.Models.MainModels.CorporateAccountHolder", "AccountOwner")
-                        .WithMany()
-                        .HasForeignKey("AccountOwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PayBridgeAPI.Models.MainModels.Bank", "Bank")
-                        .WithMany("CorporateBankAccounts")
-                        .HasForeignKey("BankId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PayBridgeAPI.Models.MainModels.Manager", "Manager")
-                        .WithMany()
-                        .HasForeignKey("ManagerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AccountOwner");
-
-                    b.Navigation("Bank");
 
                     b.Navigation("Manager");
                 });
@@ -787,7 +765,7 @@ namespace PayBridgeAPI.Migrations
 
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.Bank", b =>
                 {
-                    b.Navigation("CorporateBankAccounts");
+                    b.Navigation("CorparateBankAccounts");
 
                     b.Navigation("PersonalBankAccounts");
                 });

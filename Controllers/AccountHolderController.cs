@@ -305,7 +305,7 @@ namespace PayBridgeAPI.Controllers
                     FirstName = updateDTO.FirstName,
                     LastName = updateDTO.LastName,
                     MiddleName = updateDTO.MiddleName ?? "Не вказано",
-                    DateOfBirth = DateTime.ParseExact(updateDTO.DateOfBirth, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    DateOfBirth = DateTime.ParseExact($"0{updateDTO.DateOfBirth}", "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
                     PostalCode = updateDTO.PostalCode,
                     Country = updateDTO.Country,
                     State = updateDTO.State,

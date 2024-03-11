@@ -35,7 +35,9 @@ namespace PayBridgeAPI.Models.MainModels
         [Required]
         public string StreetAddress { get; set; }
         [Required]
-        public ICollection<string> TypesOfActivity { get; set; }
+        public bool IsActive { get; set; }
+        [Required]
+        public string Status { get; set; }
         [Required]
         public int ManagerId { get; set; }
         [Required]

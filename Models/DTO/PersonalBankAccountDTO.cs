@@ -1,0 +1,20 @@
+﻿using PayBridgeAPI.Models.MainModels;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+
+namespace PayBridgeAPI.Models.DTO
+{
+    public class PersonalBankAccountDTO
+    {
+        public int AccountId { get; set; }
+        public string AccountNumber { get; set; }
+        public string AccountOwnerFullName { get; set; }
+        public string AccountType { get; set; }
+        public bool IsActive { get; set; }
+        public string Status { get; set; }
+        public string RegistratedByManager { get; set; }
+        public string BankName { get; set; }
+        //public virtual ICollection<BankCard> BankCards { get; set; }
+        public string RegistrationDate { get; set; }
+    }
+}

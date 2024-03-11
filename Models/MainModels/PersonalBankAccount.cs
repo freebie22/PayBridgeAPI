@@ -22,14 +22,14 @@ namespace PayBridgeAPI.Models.MainModels
         [ForeignKey(nameof(AccountOwnerId))]
         public virtual PersonalAccountHolder AccountOwner { get; set; }
         [Required]
-        public string ManagerId { get; set; }
+        public int ManagerId { get; set; }
         [ForeignKey(nameof(ManagerId))]
-        public virtual ApplicationUser AccountManager { get; set; }
+        public virtual Manager AccountManager { get; set; }
         [Required]
         public int BankId { get; set; }
         [ForeignKey(nameof(BankId))]
         public virtual Bank Bank { get; set; }
-        public ICollection<BankCard> BankCards { get; set; }
+        public ICollection<BankCard> BankCards { get; set; } = new List<BankCard>();
         [Required]
         public DateTime RegistrationDate { get; set; } = DateTime.Now;
     }

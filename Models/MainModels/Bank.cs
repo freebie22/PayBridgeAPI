@@ -46,7 +46,7 @@ namespace PayBridgeAPI.Models.MainModels
         public string Status { get; set; }
         [Required]
         public DateTime RegistrationDate { get; set; } = DateTime.Now;
-        public ICollection<CorparateBankAccount> CorparateBankAccounts { get; set;}
-        public ICollection<PersonalBankAccount> PersonalBankAccounts { get; set;}
+        public ICollection<CorporateBankAccount> CorporateBankAccounts { get; set;} = new List<CorporateBankAccount>();
+        public ICollection<PersonalBankAccount> PersonalBankAccounts { get; set;} = new List<PersonalBankAccount>();
     }
 }

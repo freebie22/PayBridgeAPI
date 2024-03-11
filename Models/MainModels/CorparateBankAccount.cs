@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PayBridgeAPI.Models.MainModels
 {
-    public class CorparateBankAccount
+    public class CorporateBankAccount
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -16,6 +16,14 @@ namespace PayBridgeAPI.Models.MainModels
         public string CurrencyType { get; set; }
         [Required]
         public decimal Balance { get; set; }
+        [Required]
+        public int AccountOwnerId { get; set; }
+        [ForeignKey(nameof(AccountOwnerId))]
+        public virtual CorporateAccountHolder AccountOwner { get; set; }
+        [Required]
+        public int ManagerId { get; set; }
+        [ForeignKey(nameof(ManagerId))]
+        public virtual Manager Manager { get; set; }
         [Required]
         public int BankId { get; set; }
         [ForeignKey(nameof(BankId))]
