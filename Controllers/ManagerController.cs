@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
 using PayBridgeAPI.Models.MainModels;
@@ -37,7 +38,7 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var query = await _repository.GetAllValues(includeProperties: "User");
+                var query = await _repository.GetAllValues(include: q => q.Include(q => q.User));
 
                 if(query.Count == 0)
                 {
@@ -85,7 +86,7 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var query = await _repository.GetValueAsync(filter: q => q.ManagerId == id, includeProperties: "User");
+                var query = await _repository.GetValueAsync(filter: q => q.ManagerId == id, include: q => q.Include(q => q.User));
 
                 if (query == null)
                 {
@@ -153,7 +154,6 @@ namespace PayBridgeAPI.Controllers
                 };
 
                 await _repository.CreateAsync(manager);
-                await _repository.SaveChangesAsync();
 
                 _response.Result = manager;
                 _response.IsSuccess = true;
@@ -196,7 +196,7 @@ namespace PayBridgeAPI.Controllers
                     throw new ArgumentException("Error. Id of request and id of manager dont correspond.");
                 }
 
-                var existingManager = await _repository.GetValueAsync(filter: m => m.ManagerId == id, isTracked: false, includeProperties: "User");
+                var existingManager = await _repository.GetValueAsync(filter: m => m.ManagerId == id, isTracked: false, include: q => q.Include(q => q.User));
 
                 if(existingManager == null)
                 {

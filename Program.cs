@@ -8,6 +8,7 @@ using PayBridgeAPI.Data;
 using PayBridgeAPI.Models.User;
 using PayBridgeAPI.Repository;
 using PayBridgeAPI.Repository.MainRepo;
+using PayBridgeAPI.Repository.TransactionRepo;
 using PayBridgeAPI.Repository.UserRepo;
 using PayBridgeAPI.Services.AzureBlobs;
 using System.Text;
@@ -88,6 +89,9 @@ builder.Services.AddScoped<IBankRepository, BankRepository>();
 builder.Services.AddScoped<IPersonalAccountRepository, PersonalAccountRepository>();
 builder.Services.AddScoped<ICorporateAccountRepository, CorporateAccountRepository>();
 builder.Services.AddScoped<IPersonalBankAccountRepository, PersonalBankAccountRepository>();
+builder.Services.AddScoped(typeof(ITranscationRepository<>), typeof(TransactionRepository<>));
+builder.Services.AddScoped<IUserToUserTransactionRepository, UserToUserTransactionRepository>();
+builder.Services.AddScoped<IBankCardRepository, BankCardRepository>();
 
 var app = builder.Build();
 

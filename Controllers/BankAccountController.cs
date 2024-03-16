@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
 using PayBridgeAPI.Models.MainModels;
@@ -29,7 +30,10 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var query = await _personalAccountRepository.GetAllValues(includeProperties: "AccountOwner, AccountManager, Bank");
+                var query = await _personalAccountRepository.GetAllValues(/*includeProperties: "AccountOwner, AccountManager, Bank"*/
+                    include:
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank)
+                    );
 
                 if (query.Count == 0)
                 {
@@ -74,7 +78,8 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var bankAccount = await _personalAccountRepository.GetValueAsync(filter: b => b.AccountId == id, includeProperties: "AccountOwner, AccountManager, Bank");
+                var bankAccount = await _personalAccountRepository.GetValueAsync(filter: b => b.AccountId == id, include:
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank));
 
                 if (bankAccount == null)
                 {

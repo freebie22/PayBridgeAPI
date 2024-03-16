@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
 using PayBridgeAPI.Models.MainModels;
@@ -38,7 +39,7 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var query = await _personalRepo.GetAllValues(includeProperties: "User");
+                var query = await _personalRepo.GetAllValues(include: q => q.Include(q => q.User));
 
                 if (query.Count == 0)
                 {
@@ -91,7 +92,7 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var holder = await _personalRepo.GetValueAsync(filter: a => a.AccountId == id, includeProperties: "User");
+                var holder = await _personalRepo.GetValueAsync(filter: a => a.AccountId == id, include: q => q.Include(q => q.User));
 
                 if (holder == null)
                 {
@@ -214,7 +215,7 @@ namespace PayBridgeAPI.Controllers
                     throw new ArgumentException("Error. Id of request and id of account don't correspond.");
                 }
 
-                var existingAccount = await _personalRepo.GetValueAsync(filter: m => m.AccountId == id, isTracked: false, includeProperties: "User");
+                var existingAccount = await _personalRepo.GetValueAsync(filter: m => m.AccountId == id, isTracked: false, include: q => q.Include(q => q.User));
 
                 if (existingAccount == null)
                 {

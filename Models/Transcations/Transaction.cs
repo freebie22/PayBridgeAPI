@@ -16,6 +16,8 @@ namespace PayBridgeAPI.Models.Transcations
         public string TransactionType { get; set; }
         [Required]
         public DateTime DateOfTransaction { get; set; } = DateTime.Now;
+        [Required]
+        public string Status { get; set; }
         public string Description { get; set; } = string.Empty;
         public decimal? Fee { get; set; }
     }

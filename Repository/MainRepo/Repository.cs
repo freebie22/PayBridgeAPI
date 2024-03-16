@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using PayBridgeAPI.Data;
 using PayBridgeAPI.Models.MainModels;
 using System.Linq.Expressions;
@@ -16,7 +17,7 @@ namespace PayBridgeAPI.Repository.MainRepo
             _dbSet = _context.Set<T>();
         }
 
-        public async Task<IList<T>> GetAllValues(Expression<Func<T, bool>> filter = null, bool isTracked = true, string includeProperties = "")
+        public async Task<IList<T>> GetAllValues(Expression<Func<T, bool>> filter = null, Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null, bool isTracked = true)
         {
             IQueryable<T> query = _dbSet.AsQueryable();
 
@@ -30,19 +31,20 @@ namespace PayBridgeAPI.Repository.MainRepo
                 query = query.AsNoTracking();
             }
 
-            if(!string.IsNullOrEmpty(includeProperties))
+            if(include != null)
             {
-                var includeProps = includeProperties.Split(new char[] { ',' }, StringSplitOptions.TrimEntries);
-                foreach(var prop in includeProps)
-                {
-                    query = query.Include(prop);
-                }
+                query = include(query);
+            }
+
+            if(orderBy != null)
+            {
+                query = orderBy(query);
             }
 
             return await query.ToListAsync();
         }
 
-        public async Task<T> GetValueAsync(Expression<Func<T, bool>> filter = null, bool isTracked = true, string includeProperties = "")
+        public async Task<T> GetValueAsync(Expression<Func<T, bool>> filter = null, Func<IQueryable<T>, IIncludableQueryable<T, object>> include = null, Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null, bool isTracked = true)
         {
             IQueryable<T> query = _dbSet.AsQueryable<T>();
 
@@ -56,13 +58,14 @@ namespace PayBridgeAPI.Repository.MainRepo
                 query = query.AsNoTracking();
             }
 
-            if (!string.IsNullOrEmpty(includeProperties))
+            if (include != null)
             {
-                var includeProps = includeProperties.Split(new char[] { ',' }, StringSplitOptions.TrimEntries);
-                foreach (var prop in includeProps)
-                {
-                    query = query.Include(prop);
-                }
+                query = include(query);
+            }
+
+            if (orderBy != null)
+            {
+                query = orderBy(query);
             }
 
             return await query.FirstOrDefaultAsync();
