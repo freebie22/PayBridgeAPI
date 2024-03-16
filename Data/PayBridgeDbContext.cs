@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models.MainModels;
+using PayBridgeAPI.Models.Transcations;
 using PayBridgeAPI.Models.User;
 
 namespace PayBridgeAPI.Data
@@ -20,6 +21,7 @@ namespace PayBridgeAPI.Data
         public DbSet<CorporateAccountHolder> CorporateAccountHolders { get; set; }
         public DbSet<PersonalAccountHolder> PersonalAccountHolders { get; set; }
         public DbSet<Manager> Managers { get; set; }
+        public DbSet<UserToUserTransaction> UserToUserTransactions { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)

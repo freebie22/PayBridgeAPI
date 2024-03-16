@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace PayBridgeAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/transactions")]
     [ApiController]
     public class TransactionController : ControllerBase
     {
+
     }
 }
