@@ -57,7 +57,7 @@ namespace PayBridgeAPI.Controllers
                         TaxIdentificationNumber = bank.TaxIdentificationNumber,
                         NationalBankLicense = bank.NationalBankLicense,
                         SWIFTCode = bank.SWIFTCode,
-                        EstablishedDate = bank.EstablishedDate.ToLongDateString(),
+                        EstablishedDate = bank.EstablishedDate.Day < 10 ? 0 + bank.EstablishedDate.ToLongDateString() : bank.EstablishedDate.ToLongDateString(),
                         HeadquarterAddress = bank.HeadquarterAddress,
                         ContactNumber = bank.ContactNumber,
                         ContactEmail = bank.ContactEmail,
@@ -110,7 +110,7 @@ namespace PayBridgeAPI.Controllers
                     TaxIdentificationNumber = bank.TaxIdentificationNumber,
                     NationalBankLicense = bank.NationalBankLicense,
                     SWIFTCode = bank.SWIFTCode,
-                    EstablishedDate = bank.EstablishedDate.ToLongDateString(),
+                    EstablishedDate = bank.EstablishedDate.Day < 10 ? 0 + bank.EstablishedDate.ToLongDateString() : bank.EstablishedDate.ToLongDateString(),
                     HeadquarterAddress = bank.HeadquarterAddress,
                     ContactNumber = bank.ContactNumber,
                     ContactEmail = bank.ContactEmail,
@@ -237,10 +237,9 @@ namespace PayBridgeAPI.Controllers
                     ContactNumber = bankDTO.ContactNumber,
                     ContactEmail = bankDTO.ContactEmail,
                     WebsiteURL = bankDTO.WebsiteURL,
+                    IsActive = bankDTO.IsActive,
+                    Status = bankDTO.Status
                 };
-
-                bank.Status = existingBank.Status;
-                bank.IsActive = existingBank.IsActive;
 
 
                 await _repository.UpdateAsync(bank);
@@ -296,11 +295,13 @@ namespace PayBridgeAPI.Controllers
                     TaxIdentificationNumber = existingBank.TaxIdentificationNumber,
                     NationalBankLicense = existingBank.NationalBankLicense,
                     SWIFTCode = existingBank.SWIFTCode,
-                    EstablishedDate = existingBank.EstablishedDate.ToLongDateString(),
+                    EstablishedDate = existingBank.EstablishedDate.Day < 10 ? 0 + existingBank.EstablishedDate.ToLongDateString() : existingBank.EstablishedDate.ToLongDateString(),
                     HeadquarterAddress = existingBank.HeadquarterAddress,
                     ContactNumber = existingBank.ContactNumber,
                     ContactEmail = existingBank.ContactEmail,
                     WebsiteURL = existingBank.WebsiteURL,
+                    IsActive = existingBank.IsActive,
+                    Status = existingBank.Status
                 };
 
                 patchDTO.ApplyTo(bankDTO);
@@ -322,10 +323,9 @@ namespace PayBridgeAPI.Controllers
                     ContactNumber = bankDTO.ContactNumber,
                     ContactEmail = bankDTO.ContactEmail,
                     WebsiteURL = bankDTO.WebsiteURL,
+                    IsActive = bankDTO.IsActive,
+                    Status = bankDTO.Status
                 };
-
-                updatedBank.IsActive = existingBank.IsActive;
-                updatedBank.Status = existingBank.Status;
 
                 await _repository.UpdateAsync(updatedBank);
                 await _repository.SaveChangesAsync();

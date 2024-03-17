@@ -34,6 +34,5 @@ namespace PayBridgeAPI.Models.DTO
         public string ContactEmail { get; set; }
         [Required]
         public string WebsiteURL { get; set; }
-
     }
 }

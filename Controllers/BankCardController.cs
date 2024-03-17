@@ -46,8 +46,8 @@ namespace PayBridgeAPI.Controllers
                     {
                         BankCardId = bankCard.BankCardId,
                         CardNumber = bankCard.CardNumber,
-                        ExpiryDate = $"{bankCard.ExpiryDate.Month}/{bankCard.ExpiryDate.Year}",
-                        OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} ${bankCard.Account.AccountOwner.FirstName} ${bankCard.Account.AccountOwner.MiddleName}",
+                        ExpiryDate = bankCard.ExpiryDate.Month < 10 ? $"0{bankCard.ExpiryDate.Month}/{bankCard.ExpiryDate.Year % 100}" : $"{bankCard.ExpiryDate.Month}/{bankCard.ExpiryDate.Year % 100}",
+                        OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
                         CurrencyType = bankCard.CurrencyType,
                         Balance = bankCard.Balance,
                         IsActive = bankCard.IsActive,
@@ -89,8 +89,8 @@ namespace PayBridgeAPI.Controllers
                 {
                     BankCardId = bankCardQuery.BankCardId,
                     CardNumber = bankCardQuery.CardNumber,
-                    ExpiryDate = $"{bankCardQuery.ExpiryDate.Month}/{bankCardQuery.ExpiryDate.Year}",
-                    OwnerCredentials = $"{bankCardQuery.Account.AccountOwner.LastName} {bankCardQuery.Account.AccountOwner.FirstName} {bankCardQuery.Account.AccountOwner.MiddleName}",
+                    ExpiryDate = bankCardQuery.ExpiryDate.Month < 10 ? $"0{bankCardQuery.ExpiryDate.Month}/{bankCardQuery.ExpiryDate.Year % 100}" : $"{bankCardQuery.ExpiryDate.Month}/{bankCardQuery.ExpiryDate.Year % 100}",
+                    OwnerCredentials = $"{bankCardQuery.Account.AccountOwner.LastName} {bankCardQuery.Account.AccountOwner.FirstName[0]}.{bankCardQuery.Account.AccountOwner.MiddleName[0]}.",
                     CurrencyType = bankCardQuery.CurrencyType,
                     Balance = bankCardQuery.Balance,
                     IsActive = bankCardQuery.IsActive,
@@ -129,9 +129,12 @@ namespace PayBridgeAPI.Controllers
                     throw new InvalidOperationException($"Error. Bank card with number of {bankCardDTO.CardNumber} already exists");
                 }
 
+                var bankCardsInDb = await _bankCardRepository.GetAllValues(orderBy: b => b.OrderBy(b => b.BankCardId), isTracked: false);
+                var newBankCardId = bankCardsInDb.Last().BankCardId;
+
                 BankCard bankCard = new()
                 {
-                    //BankCardId = (await _bankCardRepository.GetAllValues()).Count + 1, Потрібно пофіксити
+                    BankCardId = newBankCardId + 1,
                     CardNumber = bankCardDTO.CardNumber,
                     ExpiryDate = DateTime.ParseExact(bankCardDTO.ExpiryDate, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
                     CVC = bankCardDTO.CVC,

@@ -20,5 +20,7 @@ namespace PayBridgeAPI.Models.DTO
         public string ContactNumber { get; set; }
         public string ContactEmail { get; set; }
         public string WebsiteURL { get; set; }
+        public bool IsActive { get; set; }
+        public string Status { get; set; }
     }
 }
