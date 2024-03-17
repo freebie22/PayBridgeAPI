@@ -1,6 +1,7 @@
 ﻿using PayBridgeAPI.Models.MainModels;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using PayBridgeAPI.Models.DTO.BankCardDTOs;
 
 namespace PayBridgeAPI.Models.DTO
 {
@@ -14,7 +15,7 @@ namespace PayBridgeAPI.Models.DTO
         public string Status { get; set; }
         public string RegistratedByManager { get; set; }
         public string BankName { get; set; }
-        //public virtual ICollection<BankCard> BankCards { get; set; }
+        public ICollection<BankCardDTO> BankCards { get; set; }
         public string RegistrationDate { get; set; }
     }
 }

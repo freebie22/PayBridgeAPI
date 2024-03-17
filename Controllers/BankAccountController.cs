@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
+using PayBridgeAPI.Models.DTO.BankCardDTOs;
 using PayBridgeAPI.Models.MainModels;
 using PayBridgeAPI.Repository;
 using System.Globalization;
@@ -32,7 +33,7 @@ namespace PayBridgeAPI.Controllers
             {
                 var query = await _personalAccountRepository.GetAllValues(/*includeProperties: "AccountOwner, AccountManager, Bank"*/
                     include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank)
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank).Include(q => q.BankCards)
                     );
 
                 if (query.Count == 0)
@@ -41,9 +42,11 @@ namespace PayBridgeAPI.Controllers
                 }
 
                 List<PersonalBankAccountDTO> bankAccounts = new List<PersonalBankAccountDTO>();
+
                 foreach (PersonalBankAccount bankAccount in query)
                 {
-                    bankAccounts.Add(new PersonalBankAccountDTO()
+                    List<BankCardDTO> bankCards = new List<BankCardDTO>();
+                    PersonalBankAccountDTO account = new PersonalBankAccountDTO()
                     {
                         AccountId = bankAccount.AccountId,
                         AccountNumber = bankAccount.AccountNumber,
@@ -52,7 +55,25 @@ namespace PayBridgeAPI.Controllers
                         RegistratedByManager = $"{bankAccount.AccountManager.LastName} " + $"{bankAccount.AccountManager.FirstName} " + $"{bankAccount.AccountManager.MiddleName}",
                         BankName = bankAccount.Bank.ShortBankName,
                         RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
-                    });
+                    };
+                    foreach(var bankCard in bankAccount.BankCards)
+                    {
+                        BankCardDTO bankCardDTO = new BankCardDTO()
+                        {
+                            BankCardId = bankCard.BankCardId,
+                            CardNumber = bankCard.CardNumber,
+                            ExpiryDate = bankCard.ExpiryDate.ToLongDateString(),
+                            CVC = bankCard.CVC,
+                            OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
+                            CurrencyType = bankCard.CurrencyType,
+                            Balance = bankCard.Balance,
+                            IsActive = bankCard.IsActive,
+                            RegistrationDate = bankCard.RegistrationDate.ToLongDateString(),
+                        };
+                        bankCards.Add(bankCardDTO);
+                    }
+                    account.BankCards = bankCards;
+                    bankAccounts.Add(account);
                 }
 
                 _response.Result = bankAccounts;
@@ -79,7 +100,7 @@ namespace PayBridgeAPI.Controllers
             try
             {
                 var bankAccount = await _personalAccountRepository.GetValueAsync(filter: b => b.AccountId == id, include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank));
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank).Include(q => q.BankCards));
 
                 if (bankAccount == null)
                 {
@@ -96,6 +117,27 @@ namespace PayBridgeAPI.Controllers
                     BankName = bankAccount.Bank.ShortBankName,
                     RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
                 };
+
+                List<BankCardDTO> bankCards = new();
+
+                foreach(var bankCard in bankAccount.BankCards)
+                {
+                    BankCardDTO bankCardDTO = new BankCardDTO()
+                    {
+                        BankCardId = bankCard.BankCardId,
+                        CardNumber = bankCard.CardNumber,
+                        ExpiryDate = bankCard.ExpiryDate.ToLongDateString(),
+                        CVC = bankCard.CVC,
+                        OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
+                        CurrencyType = bankCard.CurrencyType,
+                        Balance = bankCard.Balance,
+                        IsActive = bankCard.IsActive,
+                        RegistrationDate = bankCard.RegistrationDate.ToLongDateString(),
+                    };
+                    bankCards.Add(bankCardDTO);
+                }
+
+                bankAccountDTO.BankCards = bankCards;
 
                 _response.Result = bankAccountDTO;
                 _response.StatusCode = HttpStatusCode.OK;

@@ -19,7 +19,10 @@ var key = builder.Configuration.GetValue<string>("ApiSetting:Secret");
 
 // Add services to the container.
 
-builder.Services.AddControllers().AddNewtonsoftJson();
+builder.Services.AddControllers().AddNewtonsoftJson(options =>
+{
+    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+});
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddAuthentication(options =>
 {
