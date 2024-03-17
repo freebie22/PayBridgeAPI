@@ -170,59 +170,5 @@ namespace PayBridgeAPI.Controllers
                 }
             }
         }
-
-        [HttpPost("AttachCardToBankAccount")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> AttachCardToBankAccount(int bankAccountId, int bankCardId)
-        {
-            try
-            {
-                if (bankAccountId <= 0 || bankCardId <= 0)
-                {
-                    throw new ArgumentException("Error. Id cannot be less than or equal to 0.");
-                }
-
-                var bankAccount = await _bankAccountRepository.GetValueAsync(filter: b => b.AccountId == bankAccountId);
-                var bankCard = await _bankCardRepository.GetValueAsync(filter: b => b.BankCardId == bankCardId);
-
-                if(bankCard == null || bankAccount == null)
-                {
-                    throw new NullReferenceException("Error. Bank Account or Bank Card wasn't found by your request");
-                }
-
-                bankAccount.BankCards.Add(bankCard);
-                await _bankAccountRepository.UpdateAccount(bankAccount);
-                await _bankAccountRepository.SaveChanges();
-
-                _response.StatusCode = HttpStatusCode.OK;
-                _response.Result = "Bank card has been successfully attached to bank account";
-                _response.IsSuccess = true;
-                return Ok(_response);
-
-            }
-            catch(Exception ex)
-            {
-                if(ex is ArgumentException)
-                {
-                    _response.ErrorMessages.Add(ex.Message);
-                    _response.IsSuccess = false;
-                    _response.StatusCode = HttpStatusCode.BadRequest;
-                    return BadRequest(_response);
-                }
-                else if(ex is NullReferenceException)
-                {
-                    _response.ErrorMessages.Add(ex.Message);
-                    _response.IsSuccess = false;
-                    _response.StatusCode = HttpStatusCode.BadRequest;
-                    return NotFound(_response);
-                }
-                else
-                {
-                    throw;
-                }
-            }
-        }
     }
 }

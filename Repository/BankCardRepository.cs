@@ -18,5 +18,11 @@ namespace PayBridgeAPI.Repository
             _context.Update(bankCard);
             await SaveChangesAsync();
         }
+
+        public async Task UpdateRangeAsync(params BankCard[] bankCards)
+        {
+            _context.UpdateRange(bankCards);
+            await SaveChangesAsync();
+        }
     }
 }

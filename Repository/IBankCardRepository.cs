@@ -6,6 +6,7 @@ namespace PayBridgeAPI.Repository
     public interface IBankCardRepository : IRepository<BankCard>
     {
         Task UpdateAsync(BankCard bankCard);
+        Task UpdateRangeAsync(params BankCard[] bankCards);
         Task SaveChangesAsync();
     }
 }
