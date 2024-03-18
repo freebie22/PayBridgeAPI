@@ -11,6 +11,7 @@ using PayBridgeAPI.Repository.MainRepo;
 using PayBridgeAPI.Repository.TransactionRepo;
 using PayBridgeAPI.Repository.UserRepo;
 using PayBridgeAPI.Services.AzureBlobs;
+using PayBridgeAPI.Services.RESTServices;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -95,6 +96,11 @@ builder.Services.AddScoped<IPersonalBankAccountRepository, PersonalBankAccountRe
 builder.Services.AddScoped(typeof(ITranscationRepository<>), typeof(TransactionRepository<>));
 builder.Services.AddScoped<IUserToUserTransactionRepository, UserToUserTransactionRepository>();
 builder.Services.AddScoped<IBankCardRepository, BankCardRepository>();
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+builder.Services.AddHttpClient<IBaseService, BaseService>();
+builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();
+builder.Services.AddSingleton<IBaseService, BaseService>();
+builder.Services.AddSingleton<ICurrencyService, CurrencyService>();
 
 var app = builder.Build();
 

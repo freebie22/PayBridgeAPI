@@ -1,13 +1,17 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using PayBridgeAPI.Models;
+using PayBridgeAPI.Models.Currency;
 using PayBridgeAPI.Models.DTO.TransactionDTOs;
 using PayBridgeAPI.Models.Transcations;
 using PayBridgeAPI.Repository;
 using PayBridgeAPI.Repository.TransactionRepo;
+using PayBridgeAPI.Services.RESTServices;
 using Stripe;
 using System.Net;
+using PayBridgeAPI.Utility;
 
 namespace PayBridgeAPI.Controllers
 {
@@ -19,29 +23,60 @@ namespace PayBridgeAPI.Controllers
         private readonly IPersonalBankAccountRepository _personalAccountRepo;
         private readonly IBankCardRepository _bankCardRepo;
         private readonly IConfiguration _configuration;
+        private readonly ICurrencyService _currencyService;
         protected APIResponse _response;
 
-        public TransactionController(IUserToUserTransactionRepository userToUserRepo, IPersonalBankAccountRepository personalAccountRepo, IBankCardRepository bankCardRepo, IConfiguration configuration)
+        public TransactionController(IUserToUserTransactionRepository userToUserRepo, IPersonalBankAccountRepository personalAccountRepo, IBankCardRepository bankCardRepo, IConfiguration configuration, ICurrencyService currencyService)
         {
             _userToUserRepo = userToUserRepo;
             _personalAccountRepo = personalAccountRepo;
             _bankCardRepo = bankCardRepo;
             _response = new APIResponse();
             _configuration = configuration;
+            _currencyService = currencyService;
         }
 
         [HttpGet("GetUserToUserTransactions")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetAllUserToUserTransactions()
+        public async Task<ActionResult<APIResponse>> GetAllUserToUserTransactions(
+            [FromQuery(Name = "currencyCode")]string currencyCode = "",
+            [FromQuery(Name = "transactionNumber")]string transactionNumber = "")
         {
             try
             {
-                var transactionsQuery = await _userToUserRepo.GetAllTransactions(
+                List<UserToUserTransaction> transactionsQuery;
+
+                if (!string.IsNullOrEmpty(currencyCode))
+                {
+                    transactionsQuery = await _userToUserRepo.GetAllTransactions(
+                    predicate:
+                    t => t.CurrencyCode == currencyCode,
                     include:
                     t => t
                     .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
                     .Include(t => t.ReceiverBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankCard.Account.Bank));
+                }
+
+                if (!string.IsNullOrEmpty(transactionNumber))
+                {
+                    transactionsQuery = await _userToUserRepo.GetAllTransactions(
+                    predicate:
+                    t => t.TransactionNumber == transactionNumber,
+                    include:
+                    t => t
+                    .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
+                    .Include(t => t.ReceiverBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankCard.Account.Bank));
+                }
+
+                else
+                {
+                   transactionsQuery = await _userToUserRepo.GetAllTransactions(
+                   include:
+                   t => t
+                   .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
+                   .Include(t => t.ReceiverBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankCard.Account.Bank));
+                }
 
 
                 if (transactionsQuery.Count == 0)
@@ -179,14 +214,23 @@ namespace PayBridgeAPI.Controllers
                     throw new InvalidOperationException("Error. Sender account balance cannot afford transaction ammount");
                 }
 
+                var currencyResponse = await _currencyService.GetCurrencyInfo();
+
+                var currencyDeserializaed = JsonConvert.DeserializeObject<List<Currency>>(currencyResponse);
+
+                IEnumerable<CurrencyDTO> currency = currencyDeserializaed.GetCurrency();
+
                 long? amount = null;
 
                 switch (transactionDTO.CurrencyCode)
                 {
                     case "uah":
-                        amount = (int)decimal.Floor(transactionDTO.Amount / 38.80m) * 100;
+                        amount = (int)transactionDTO.Amount * 100;
                         break;
                     case "usd":
+                        amount = (int)transactionDTO.Amount * 100;
+                        break;
+                    case "eur":
                         amount = (int)transactionDTO.Amount * 100;
                         break;
                 }
@@ -213,7 +257,7 @@ namespace PayBridgeAPI.Controllers
                 UserToUserTransaction transaction = new UserToUserTransaction()
                 {
                     CurrencyCode = response.Currency,
-                    Amount = response.Amount / 100 * 38.80m,
+                    Amount = response.Amount / 100,
                     TransactionType = "Переказ з банківської карти на іншу карту",
                     DateOfTransaction = response.Created.ToLocalTime(),
                     Description = response.Description,
@@ -232,12 +276,16 @@ namespace PayBridgeAPI.Controllers
                 switch(transaction.CurrencyCode)
                 {
                     case "uah":
-                        senderAccount.Balance -= transaction.Amount / 100 * 38.80m;
-                        receiverAccount.Balance += transaction.Amount / 100 * 38.80m;
+                        senderAccount.Balance -= transaction.Amount;
+                        receiverAccount.Balance += transaction.Amount;
                         break;
                     case "usd":
-                        senderAccount.Balance -= transaction.Amount / 100 * 38.80m;
-                        receiverAccount.Balance += transaction.Amount / 100 * 38.80m;
+                        senderAccount.Balance -= transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
+                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
+                        break;
+                    case "eur":
+                        senderAccount.Balance -= transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "eur").Select(c => c.PriceBuy).FirstOrDefault();
+                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "eur").Select(c => c.PriceBuy).FirstOrDefault();
                         break;
                 }
 
