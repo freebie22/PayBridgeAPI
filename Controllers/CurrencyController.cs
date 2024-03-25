@@ -22,7 +22,7 @@ namespace PayBridgeAPI.Controllers
         }
 
 
-        [HttpGet]
+        [HttpGet("GetCurrencyRate")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<APIResponse>> GetCurrencyInfo()
@@ -39,6 +39,9 @@ namespace PayBridgeAPI.Controllers
                     _response.Result = currencyDTO;
                     _response.IsSuccess = true;
                     _response.StatusCode = HttpStatusCode.OK;
+
+                    Response.Headers.Append("PrivatBankAPI", $"Request was made at {DateTime.Now}");
+
                     return Ok(_response);
                 }
 

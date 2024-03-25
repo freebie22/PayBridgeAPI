@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
+using PayBridgeAPI.Models.DTO.CorporateAccountHolderDTOs;
 using PayBridgeAPI.Models.MainModels;
 using PayBridgeAPI.Models.User;
 using PayBridgeAPI.Repository;
@@ -322,6 +323,330 @@ namespace PayBridgeAPI.Controllers
 
                 await _personalRepo.UpdateAccount(accountHolder);
                 await _personalRepo.SaveChanges();
+
+                _response.IsSuccess = true;
+                _response.StatusCode = HttpStatusCode.OK;
+
+                return NoContent();
+            }
+
+            catch (Exception ex)
+            {
+                if (ex is ArgumentNullException || ex is InvalidOperationException)
+                {
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.IsSuccess = false;
+                    _response.ErrorMessages.Add(ex.Message);
+                    return BadRequest(_response);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+        }
+
+        [HttpGet("GetCorporateAccountHolders")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetCorporateAccountHolders()
+        {
+            try
+            {
+                var query = await _corporateRepo.GetAllValues(include: q => q.Include(q => q.Manager));
+
+                if (query.Count == 0)
+                {
+                    throw new NullReferenceException("Error. No corporate account holders have been found in database");
+                }
+
+                IList<CorporateAccountHolderDTO> holders = new List<CorporateAccountHolderDTO>();
+                foreach (CorporateAccountHolder holder in query)
+                {
+                    holders.Add(new CorporateAccountHolderDTO()
+                    {
+                       AccountId = holder.AccountId,
+                       ShortCompanyName = holder.ShortCompanyName,
+                       FullCompanyName = holder.FullCompanyName,
+                       CompanyCode = holder.CompanyCode,
+                       ContactEmail = holder.ContactEmail,
+                       ContactPhone = holder.ContactPhone,
+                       EmailConfirmed = holder.EmailConfirmed,
+                       DateOfEstablishment = holder.DateOfEstablishment.ToLongDateString(),
+                       PostalCode = holder.PostalCode,
+                       Country = holder.Country,
+                       State = holder.State,
+                       City = holder.City,
+                       StreetAddress = holder.StreetAddress,
+                       IsActive = holder.IsActive,
+                       Status = holder.Status,
+                       RegisteredByManager = $"{holder.Manager.LastName} " +  $"{holder.Manager.FirstName} " + $"{holder.Manager.MiddleName}",
+                    });
+                }
+
+                _response.Result = holders;
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
+
+            }
+
+            catch (NullReferenceException ex)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add(ex.Message);
+                return BadRequest(_response);
+            }
+        }
+
+        [HttpGet("GetCorporateAccountHolder/{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetCorporateAccountHolder(int id)
+        {
+            try
+            {
+                var holder = await _corporateRepo.GetValueAsync(filter: a => a.AccountId == id, include: q => q.Include(q => q.Manager));
+
+                if (holder == null)
+                {
+                    throw new NullReferenceException($"Error. No account holders have been found in database by id {id}");
+                }
+
+                CorporateAccountHolderDTO account = new CorporateAccountHolderDTO()
+                {
+                    AccountId = holder.AccountId,
+                    ShortCompanyName = holder.ShortCompanyName,
+                    FullCompanyName = holder.FullCompanyName,
+                    CompanyCode = holder.CompanyCode,
+                    ContactEmail = holder.ContactEmail,
+                    ContactPhone = holder.ContactPhone,
+                    EmailConfirmed = holder.EmailConfirmed,
+                    DateOfEstablishment = holder.DateOfEstablishment.ToLongDateString(),
+                    PostalCode = holder.PostalCode,
+                    Country = holder.Country,
+                    State = holder.State,
+                    City = holder.City,
+                    StreetAddress = holder.StreetAddress,
+                    IsActive = holder.IsActive,
+                    Status = holder.Status,
+                    RegisteredByManager = $"{holder.Manager.LastName} " + $"{holder.Manager.FirstName} " + $"{holder.Manager.MiddleName}"
+                };
+
+                _response.Result = account;
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
+
+            }
+
+            catch (NullReferenceException ex)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add(ex.Message);
+                return BadRequest(_response);
+            }
+        }
+
+        [HttpPost("CreateCorporateAccountHolder")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<APIResponse>> CreateCorporateAccountHolder([FromBody] CorporateAccountHolderCreateDTO holderDTO)
+        {
+            try
+            {
+                if (holderDTO == null)
+                {
+                    throw new ArgumentNullException(nameof(holderDTO), "Error. Request body was null");
+                }
+
+                var existingAccount = await _corporateRepo.GetValueAsync(e => e.CompanyCode == holderDTO.CompanyCode);
+
+                if (existingAccount != null)
+                {
+                    throw new InvalidOperationException("Error. Account holder with this company is already exists. Company code must be unique, and should not have duplicates in DB");
+                }
+
+                CorporateAccountHolder accountHolder = new CorporateAccountHolder()
+                {
+                    ShortCompanyName = holderDTO.ShortCompanyName,
+                    FullCompanyName = holderDTO.FullCompanyName,
+                    CompanyCode = holderDTO.CompanyCode,
+                    ContactEmail = holderDTO.ContactEmail,
+                    ContactPhone = holderDTO.ContactPhone,
+                    EmailConfirmed = holderDTO.EmailConfirmed,
+                    DateOfEstablishment = DateTime.ParseExact(holderDTO.DateOfEstablishment, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    PostalCode = holderDTO.PostalCode,
+                    Country = holderDTO.Country,
+                    State = holderDTO.State,
+                    City = holderDTO.City,
+                    StreetAddress = holderDTO.StreetAddress,
+                    IsActive = holderDTO.IsActive,
+                    Status = holderDTO.Status,
+                    ManagerId = holderDTO.ManagerId
+                };
+
+                await _corporateRepo.CreateAsync(accountHolder);
+                await _corporateRepo.SaveChanges();
+
+                _response.Result = accountHolder;
+                _response.IsSuccess = true;
+                _response.StatusCode = HttpStatusCode.OK;
+
+                return Ok(_response);
+            }
+
+            catch (Exception ex)
+            {
+                if (ex is ArgumentNullException || ex is InvalidOperationException)
+                {
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.IsSuccess = false;
+                    _response.ErrorMessages.Add(ex.Message);
+                    return BadRequest(_response);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+        }
+
+
+        [HttpPut("UpdateCorporateAccountHolder/{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<APIResponse>> UpdateCorporateAccountHolder(int id, [FromForm] CorporateAccountHolderUpdateDTO holderDTO)
+        {
+            try
+            {
+                if (holderDTO == null)
+                {
+                    throw new ArgumentNullException(nameof(holderDTO), "Error. Request body was null");
+                }
+
+                if (id == 0 || id != holderDTO.AccountId)
+                {
+                    throw new ArgumentException("Error. Id of request and id of account don't correspond.");
+                }
+
+                var existingAccount = await _corporateRepo.GetValueAsync(filter: m => m.AccountId == id, isTracked: false, include: q => q.Include(q => q.Manager));
+
+                if (existingAccount == null)
+                {
+                    throw new ArgumentException($"Error. Account with id of {id} doesn't exist");
+                }
+
+                CorporateAccountHolder accountHolder = new CorporateAccountHolder()
+                {
+                    AccountId = holderDTO.AccountId,
+                    ShortCompanyName = holderDTO.ShortCompanyName,
+                    FullCompanyName = holderDTO.FullCompanyName,
+                    CompanyCode = holderDTO.CompanyCode,
+                    ContactEmail = holderDTO.ContactEmail,
+                    ContactPhone = holderDTO.ContactPhone,
+                    EmailConfirmed = holderDTO.EmailConfirmed,
+                    DateOfEstablishment = DateTime.ParseExact(holderDTO.DateOfEstablishment, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    PostalCode = holderDTO.PostalCode,
+                    Country = holderDTO.Country,
+                    State = holderDTO.State,
+                    City = holderDTO.City,
+                    StreetAddress = holderDTO.StreetAddress,
+                    IsActive = holderDTO.IsActive,
+                    Status = holderDTO.Status,
+                    ManagerId = existingAccount.ManagerId
+                };
+
+
+                await _corporateRepo.UpdateAccount(accountHolder);
+                await _corporateRepo.SaveChanges();
+
+                _response.IsSuccess = true;
+                _response.StatusCode = HttpStatusCode.OK;
+
+                return NoContent();
+            }
+
+            catch (Exception ex)
+            {
+                if (ex is ArgumentNullException || ex is InvalidOperationException)
+                {
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    _response.IsSuccess = false;
+                    _response.ErrorMessages.Add(ex.Message);
+                    return BadRequest(_response);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+        }
+
+        [HttpPatch("UpdateCorporatelAccountHolderPartially/{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<APIResponse>> UpdateCorporateAccountHolderPartially(int id, [FromBody] JsonPatchDocument<CorporateAccountHolderUpdateDTO> patchDTO)
+        {
+            try
+            {
+
+                var existingAccount = await _corporateRepo.GetValueAsync(filter: m => m.AccountId == id, isTracked: false);
+
+                if (existingAccount == null)
+                {
+                    throw new ArgumentException($"Error. Account with id of {id} doesn't exist");
+                }
+
+                CorporateAccountHolderUpdateDTO holderDTO = new CorporateAccountHolderUpdateDTO()
+                {
+                    AccountId = existingAccount.AccountId,
+                    ShortCompanyName = existingAccount.ShortCompanyName,
+                    FullCompanyName = existingAccount.FullCompanyName,
+                    CompanyCode = existingAccount.CompanyCode,
+                    ContactEmail = existingAccount.ContactEmail,
+                    ContactPhone = existingAccount.ContactPhone,
+                    EmailConfirmed = existingAccount.EmailConfirmed,
+                    DateOfEstablishment = existingAccount.DateOfEstablishment.ToLongDateString(),
+                    PostalCode = existingAccount.PostalCode,
+                    Country = existingAccount.Country,
+                    State = existingAccount.State,
+                    City = existingAccount.City,
+                    StreetAddress = existingAccount.StreetAddress,
+                    IsActive = existingAccount.IsActive,
+                    Status = existingAccount.Status
+                };
+
+                patchDTO.ApplyTo(holderDTO);
+
+                CorporateAccountHolder accountHolder = new CorporateAccountHolder()
+                {
+                    AccountId = holderDTO.AccountId,
+                    ShortCompanyName = holderDTO.ShortCompanyName,
+                    FullCompanyName = holderDTO.FullCompanyName,
+                    CompanyCode = holderDTO.CompanyCode,
+                    ContactEmail = holderDTO.ContactEmail,
+                    ContactPhone = holderDTO.ContactPhone,
+                    EmailConfirmed = holderDTO.EmailConfirmed,
+                    DateOfEstablishment = DateTime.ParseExact(holderDTO.DateOfEstablishment, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    PostalCode = holderDTO.PostalCode,
+                    Country = holderDTO.Country,
+                    State = holderDTO.State,
+                    City = holderDTO.City,
+                    StreetAddress = holderDTO.StreetAddress,
+                    IsActive = holderDTO.IsActive,
+                    Status = holderDTO.Status,
+                    ManagerId = existingAccount.ManagerId
+                };
+
+
+                await _corporateRepo.UpdateAccount(accountHolder);
+                await _corporateRepo.SaveChanges();
 
                 _response.IsSuccess = true;
                 _response.StatusCode = HttpStatusCode.OK;

@@ -30,5 +30,9 @@ namespace PayBridgeAPI.Models.MainModels
         public virtual Bank Bank { get; set; }
         [Required]
         public DateTime RegistrationDate { get; set; } = DateTime.Now;
+        [Required]
+        public bool IsActive { get; set; } = false;
+        [Required]
+        public string Status { get; set; } 
     }
 }

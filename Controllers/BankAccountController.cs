@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Azure;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
-using PayBridgeAPI.Models.DTO;
 using PayBridgeAPI.Models.DTO.BankCardDTOs;
 using PayBridgeAPI.Models.MainModels;
 using PayBridgeAPI.Repository;
@@ -14,195 +14,159 @@ namespace PayBridgeAPI.Controllers
     [Route("api/bankAccount")]
     public class BankAccountController : ControllerBase
     {
-        private readonly IPersonalBankAccountRepository _personalAccountRepository;
+        private readonly IBankCardRepository _bankCardRepository;
         protected APIResponse _response;
 
-        public BankAccountController(IPersonalBankAccountRepository personalAccountRepository)
+        public BankAccountController(IBankCardRepository bankCardRepository)
         {
-            _personalAccountRepository = personalAccountRepository;
+            _bankCardRepository = bankCardRepository;
             _response = new APIResponse();
         }
 
-        [HttpGet("GetPersonalBankAccounts")]
+        [HttpGet("GetBankCards")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetPersonalBankAccounts()
+        public async Task<ActionResult<APIResponse>> GetBankCards()
         {
             try
             {
-                var query = await _personalAccountRepository.GetAllValues(/*includeProperties: "AccountOwner, AccountManager, Bank"*/
-                    include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank).Include(q => q.BankCards)
-                    );
+                var bankCardsQuery = await _bankCardRepository.GetAllValues(orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner));
 
-                if (query.Count == 0)
+                if (bankCardsQuery.Count == 0)
                 {
-                    throw new NullReferenceException("Error. No bank accounts have been found in database");
+                    throw new NullReferenceException("Error. No bank cards were found by your request");
                 }
-
-                List<PersonalBankAccountDTO> bankAccounts = new List<PersonalBankAccountDTO>();
-
-                foreach (PersonalBankAccount bankAccount in query)
-                {
-                    List<BankCardDTO> bankCards = new List<BankCardDTO>();
-                    PersonalBankAccountDTO account = new PersonalBankAccountDTO()
-                    {
-                        AccountId = bankAccount.AccountId,
-                        AccountNumber = bankAccount.AccountNumber,
-                        AccountOwnerFullName = $"{bankAccount.AccountOwner.LastName} " + $"{bankAccount.AccountOwner.FirstName} " + $"{bankAccount.AccountOwner.MiddleName}",
-                        AccountType = bankAccount.AccountType,
-                        RegistratedByManager = $"{bankAccount.AccountManager.LastName} " + $"{bankAccount.AccountManager.FirstName} " + $"{bankAccount.AccountManager.MiddleName}",
-                        BankName = bankAccount.Bank.ShortBankName,
-                        RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
-                    };
-                    foreach(var bankCard in bankAccount.BankCards)
-                    {
-                        BankCardDTO bankCardDTO = new BankCardDTO()
-                        {
-                            BankCardId = bankCard.BankCardId,
-                            CardNumber = bankCard.CardNumber,
-                            ExpiryDate = bankCard.ExpiryDate.ToLongDateString(),
-                            CVC = bankCard.CVC,
-                            OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
-                            CurrencyType = bankCard.CurrencyType,
-                            Balance = bankCard.Balance,
-                            IsActive = bankCard.IsActive,
-                            RegistrationDate = bankCard.RegistrationDate.ToLongDateString(),
-                        };
-                        bankCards.Add(bankCardDTO);
-                    }
-                    account.BankCards = bankCards;
-                    bankAccounts.Add(account);
-                }
-
-                _response.Result = bankAccounts;
-                _response.StatusCode = HttpStatusCode.OK;
-                return Ok(_response);
-
-            }
-
-            catch (NullReferenceException ex)
-            {
-                _response.IsSuccess = false;
-                _response.StatusCode = HttpStatusCode.BadRequest;
-                _response.ErrorMessages.Add(ex.Message);
-                return BadRequest(_response);
-            }
-        }
-
-        [HttpGet("GetPersonalBankAccounts/{id:int}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetPersonalBankAccount(int id)
-        {
-            try
-            {
-                var bankAccount = await _personalAccountRepository.GetValueAsync(filter: b => b.AccountId == id, include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank).Include(q => q.BankCards));
-
-                if (bankAccount == null)
-                {
-                    throw new NullReferenceException($"Error. No bank accounts have been found in database by id {id}");
-                }
-
-                PersonalBankAccountDTO bankAccountDTO = new PersonalBankAccountDTO()
-                {
-                    AccountId = bankAccount.AccountId,
-                    AccountNumber = bankAccount.AccountNumber,
-                    AccountOwnerFullName = $"{bankAccount.AccountOwner.LastName} " + $"{bankAccount.AccountOwner.FirstName} " + $"{bankAccount.AccountOwner.MiddleName}",
-                    AccountType = bankAccount.AccountType,
-                    RegistratedByManager = $"{bankAccount.AccountManager.LastName} " + $"{bankAccount.AccountManager.FirstName} " + $"{bankAccount.AccountManager.MiddleName}",
-                    BankName = bankAccount.Bank.ShortBankName,
-                    RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
-                };
 
                 List<BankCardDTO> bankCards = new();
-
-                foreach(var bankCard in bankAccount.BankCards)
+                foreach (var bankCard in bankCardsQuery)
                 {
-                    BankCardDTO bankCardDTO = new BankCardDTO()
+                    bankCards.Add(new BankCardDTO
                     {
                         BankCardId = bankCard.BankCardId,
                         CardNumber = bankCard.CardNumber,
-                        ExpiryDate = bankCard.ExpiryDate.ToLongDateString(),
-                        CVC = bankCard.CVC,
+                        ExpiryDate = bankCard.ExpiryDate.Month < 10 ? $"0{bankCard.ExpiryDate.Month}/{bankCard.ExpiryDate.Year % 100}" : $"{bankCard.ExpiryDate.Month}/{bankCard.ExpiryDate.Year % 100}",
                         OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
                         CurrencyType = bankCard.CurrencyType,
                         Balance = bankCard.Balance,
                         IsActive = bankCard.IsActive,
+                        CVC = bankCard.CVC,
                         RegistrationDate = bankCard.RegistrationDate.ToLongDateString(),
-                    };
-                    bankCards.Add(bankCardDTO);
+                    });
                 }
 
-                bankAccountDTO.BankCards = bankCards;
-
-                _response.Result = bankAccountDTO;
+                _response.Result = bankCards;
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);
+            }
+            
+            catch(NullReferenceException ex)
+            {
+                _response.ErrorMessages.Add(ex.Message);
+                _response.StatusCode = HttpStatusCode.NotFound;
+                _response.IsSuccess = false;
+                return NotFound(_response);
+            }
 
+        }
+
+        [HttpGet("GetBankCard/{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetBankCard(int id)
+        {
+            try
+            {
+                var bankCardQuery = await _bankCardRepository.GetValueAsync(filter: b => b.BankCardId == id,orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner));
+
+                if (bankCardQuery == null)
+                {
+                    throw new NullReferenceException("Error. No bank cards were found by your request");
+                }
+
+                BankCardDTO bankCard = new BankCardDTO()
+                {
+                    BankCardId = bankCardQuery.BankCardId,
+                    CardNumber = bankCardQuery.CardNumber,
+                    ExpiryDate = bankCardQuery.ExpiryDate.Month < 10 ? $"0{bankCardQuery.ExpiryDate.Month}/{bankCardQuery.ExpiryDate.Year % 100}" : $"{bankCardQuery.ExpiryDate.Month}/{bankCardQuery.ExpiryDate.Year % 100}",
+                    OwnerCredentials = $"{bankCardQuery.Account.AccountOwner.LastName} {bankCardQuery.Account.AccountOwner.FirstName[0]}.{bankCardQuery.Account.AccountOwner.MiddleName[0]}.",
+                    CurrencyType = bankCardQuery.CurrencyType,
+                    Balance = bankCardQuery.Balance,
+                    IsActive = bankCardQuery.IsActive,
+                    CVC = bankCardQuery.CVC,
+                    RegistrationDate = bankCardQuery.RegistrationDate.ToLongDateString(),
+                };
+
+                _response.Result = bankCard;
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
             }
 
             catch (NullReferenceException ex)
             {
-                _response.IsSuccess = false;
-                _response.StatusCode = HttpStatusCode.BadRequest;
                 _response.ErrorMessages.Add(ex.Message);
-                return BadRequest(_response);
+                _response.StatusCode = HttpStatusCode.NotFound;
+                _response.IsSuccess = false;
+                return NotFound(_response);
             }
         }
 
-        [HttpPost("RegisterPersonalBankAccount")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
+        [HttpPost("AddBankCard")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<APIResponse>> RegisterPersonalBankAccount([FromBody] PersonalBankAccountCreateDTO bankAccountDTO)
+        public async Task<ActionResult<APIResponse>> AddBankCard([FromBody]BankCardCreateDTO bankCardDTO)
         {
             try
             {
-                if (bankAccountDTO == null)
+                if (bankCardDTO == null)
                 {
-                    throw new ArgumentNullException(nameof(bankAccountDTO), "Error. Request body was null");
+                    throw new ArgumentNullException(nameof(bankCardDTO), "Error. Request body was null");
                 }
 
-
-                PersonalBankAccount bankAccount = new PersonalBankAccount()
+                if(await _bankCardRepository.GetValueAsync(b => b.CardNumber == bankCardDTO.CardNumber) != null)
                 {
-                   AccountType = bankAccountDTO.AccountType,
-                   IsActive = false,
-                   Status = "Рахунок очікує на активацію",
-                   AccountOwnerId = bankAccountDTO.AccountOwnerId,
-                   ManagerId = bankAccountDTO.ManagerId,
-                   BankId = bankAccountDTO.BankId,
+                    throw new InvalidOperationException($"Error. Bank card with number of {bankCardDTO.CardNumber} already exists");
+                }
+
+                var bankCardsInDb = await _bankCardRepository.GetAllValues(orderBy: b => b.OrderBy(b => b.BankCardId), isTracked: false);
+                var newBankCardId = bankCardsInDb.Last().BankCardId;
+
+                BankCard bankCard = new()
+                {
+                    BankCardId = newBankCardId + 1,
+                    CardNumber = bankCardDTO.CardNumber,
+                    ExpiryDate = DateTime.ParseExact(bankCardDTO.ExpiryDate, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    CVC = bankCardDTO.CVC,
+                    CurrencyType = bankCardDTO.CurrencyType,
+                    Balance = bankCardDTO.Balance,
+                    IsActive = bankCardDTO.IsActive,
+                    BankAccountId = bankCardDTO.BankAccountId,
+                    RegistrationDate = DateTime.Now
                 };
 
+                await _bankCardRepository.CreateAsync(bankCard);
+                await _bankCardRepository.SaveChangesAsync();
 
-                await _personalAccountRepository.CreateAsync(bankAccount);
-                await _personalAccountRepository.SaveChanges();
-
-                _response.Result = bankAccount;
-                _response.IsSuccess = true;
                 _response.StatusCode = HttpStatusCode.OK;
+                _response.IsSuccess = true;
+                _response.Result = $"Bank Card with number of {bankCard.CardNumber} was successfully created";
 
-                return CreatedAtRoute(nameof(GetPersonalBankAccount), new { id = bankAccount.AccountId }, _response);
+                return Ok(_response);
             }
-
-            catch (Exception ex)
+            
+            catch(Exception ex)
             {
-                if (ex is ArgumentNullException || ex is InvalidOperationException)
+                if(ex is ArgumentNullException || ex is InvalidOperationException)
                 {
-                    _response.StatusCode = HttpStatusCode.BadRequest;
-                    _response.IsSuccess = false;
                     _response.ErrorMessages.Add(ex.Message);
-                    return BadRequest(_response);
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    return BadRequest(ex.Message);
                 }
                 else
                 {
                     throw;
                 }
             }
-
         }
     }
 }

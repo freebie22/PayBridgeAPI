@@ -93,6 +93,7 @@ builder.Services.AddScoped<IBankRepository, BankRepository>();
 builder.Services.AddScoped<IPersonalAccountRepository, PersonalAccountRepository>();
 builder.Services.AddScoped<ICorporateAccountRepository, CorporateAccountRepository>();
 builder.Services.AddScoped<IPersonalBankAccountRepository, PersonalBankAccountRepository>();
+builder.Services.AddScoped<ICorporateBankAccountRepository, CorporateBankAccountRepository>();
 builder.Services.AddScoped(typeof(ITranscationRepository<>), typeof(TransactionRepository<>));
 builder.Services.AddScoped<IUserToUserTransactionRepository, UserToUserTransactionRepository>();
 builder.Services.AddScoped<IBankCardRepository, BankCardRepository>();

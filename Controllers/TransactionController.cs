@@ -23,17 +23,18 @@ namespace PayBridgeAPI.Controllers
         private readonly IPersonalBankAccountRepository _personalAccountRepo;
         private readonly IBankCardRepository _bankCardRepo;
         private readonly IConfiguration _configuration;
-        private readonly ICurrencyService _currencyService;
+        private readonly IBaseService _baseService;
         protected APIResponse _response;
 
-        public TransactionController(IUserToUserTransactionRepository userToUserRepo, IPersonalBankAccountRepository personalAccountRepo, IBankCardRepository bankCardRepo, IConfiguration configuration, ICurrencyService currencyService)
+        public TransactionController(IUserToUserTransactionRepository userToUserRepo, IPersonalBankAccountRepository personalAccountRepo,
+            IBaseService baseService, IBankCardRepository bankCardRepo, IConfiguration configuration)
         {
             _userToUserRepo = userToUserRepo;
             _personalAccountRepo = personalAccountRepo;
             _bankCardRepo = bankCardRepo;
             _response = new APIResponse();
             _configuration = configuration;
-            _currencyService = currencyService;
+            _baseService = baseService;
         }
 
         [HttpGet("GetUserToUserTransactions")]
@@ -185,7 +186,7 @@ namespace PayBridgeAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> MakePayment([FromBody]UserToUserTransactionCreateDTO transactionDTO)
+        public async Task<ActionResult<APIResponse>> MakeTransaction([FromBody]UserToUserTransactionCreateDTO transactionDTO)
         {
             try
             {
@@ -214,7 +215,13 @@ namespace PayBridgeAPI.Controllers
                     throw new InvalidOperationException("Error. Sender account balance cannot afford transaction ammount");
                 }
 
-                var currencyResponse = await _currencyService.GetCurrencyInfo();
+
+                var currencyResponse = await _baseService.SendAsync(new APIRequest()
+                {
+                    //Development URL
+                    RequestURL = "https://localhost:7112/api/currency/GetCurrencyRate",
+                    RequestType = API_Request_Type.GET
+                });
 
                 var currencyDeserializaed = JsonConvert.DeserializeObject<List<Currency>>(currencyResponse);
 
