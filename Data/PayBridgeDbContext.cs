@@ -22,6 +22,7 @@ namespace PayBridgeAPI.Data
         public DbSet<PersonalAccountHolder> PersonalAccountHolders { get; set; }
         public DbSet<Manager> Managers { get; set; }
         public DbSet<UserToUserTransaction> UserToUserTransactions { get; set; }
+        public DbSet<CompanyBankAsset> CompanyBankAssets { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -33,6 +34,8 @@ namespace PayBridgeAPI.Data
             builder.Entity<PersonalBankAccount>().HasOne(e => e.Bank).WithMany(e => e.PersonalBankAccounts).HasForeignKey(e => e.BankId).IsRequired();
             builder.Entity<Bank>().HasMany(e => e.CorporateBankAccounts).WithOne(e => e.Bank).HasForeignKey(e => e.BankId).IsRequired();
             builder.Entity<CorporateBankAccount>().HasOne(e => e.Bank).WithMany(e => e.CorporateBankAccounts).HasForeignKey(e => e.BankId).IsRequired();
+            builder.Entity<CorporateBankAccount>().HasMany(e => e.BankAssets).WithOne(e => e.CorporateAccount).HasForeignKey(e => e.CorporateAccountId).IsRequired();
+            builder.Entity<CompanyBankAsset>().HasOne(e => e.CorporateAccount).WithMany(e => e.BankAssets).HasForeignKey(e => e.CorporateAccountId).IsRequired();
         }
     }
 }

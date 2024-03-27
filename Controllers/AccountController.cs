@@ -236,7 +236,6 @@ namespace PayBridgeAPI.Controllers
                         AccountId = bankAccount.AccountId,
                         AccountNumber = bankAccount.AccountNumber,
                         CurrencyType = bankAccount.CurrencyType,
-                        Balance = bankAccount.Balance,
                         CompanyOwnerShortName = bankAccount.AccountOwner.ShortCompanyName,
                         CompanyCode = bankAccount.AccountOwner.CompanyCode,
                         AccountType = bankAccount.AccountType,
@@ -304,7 +303,6 @@ namespace PayBridgeAPI.Controllers
                     AccountId = bankAccount.AccountId,
                     AccountNumber = bankAccount.AccountNumber,
                     CurrencyType = bankAccount.CurrencyType,
-                    Balance = bankAccount.Balance,
                     CompanyOwnerShortName = bankAccount.AccountOwner.ShortCompanyName,
                     CompanyCode = bankAccount.AccountOwner.CompanyCode,
                     AccountType = bankAccount.AccountType,
@@ -366,7 +364,6 @@ namespace PayBridgeAPI.Controllers
                 {
                     AccountType = bankAccountDTO.AccountType,
                     CurrencyType = bankAccountDTO.CurrencyType,
-                    Balance = bankAccountDTO.Balance,
                     IsActive = false,
                     Status = "Очікує на активацію менеджером платіжної системи",
                     AccountOwnerId = bankAccountDTO.CompanyOwnerId,

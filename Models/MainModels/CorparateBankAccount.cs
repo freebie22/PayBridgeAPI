@@ -15,8 +15,6 @@ namespace PayBridgeAPI.Models.MainModels
         [Required]
         public string CurrencyType { get; set; }
         [Required]
-        public decimal Balance { get; set; }
-        [Required]
         public int AccountOwnerId { get; set; }
         [ForeignKey(nameof(AccountOwnerId))]
         public virtual CorporateAccountHolder AccountOwner { get; set; }
@@ -34,5 +32,6 @@ namespace PayBridgeAPI.Models.MainModels
         public bool IsActive { get; set; } = false;
         [Required]
         public string Status { get; set; } 
+        public ICollection<CompanyBankAsset> BankAssets { get; set; } = new List<CompanyBankAsset>();
     }
 }

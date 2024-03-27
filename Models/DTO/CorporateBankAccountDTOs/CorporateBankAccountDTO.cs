@@ -10,7 +10,6 @@ namespace PayBridgeAPI.Models.DTO.CorporateBankAccountDTOs
         public string AccountNumber { get; set; }
         public string AccountType { get; set; }
         public string CurrencyType { get; set; }
-        public decimal Balance { get; set; }
         public string CompanyOwnerShortName { get; set; }
         public string CompanyCode { get; set; }
         public string RegisteredByManager { get; set; }

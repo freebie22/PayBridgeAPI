@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using PayBridgeAPI.Data;
 using PayBridgeAPI.Models.User;
 using PayBridgeAPI.Repository;
+using PayBridgeAPI.Repository.CompanyBankAssetRepository;
 using PayBridgeAPI.Repository.MainRepo;
 using PayBridgeAPI.Repository.TransactionRepo;
 using PayBridgeAPI.Repository.UserRepo;
@@ -97,6 +98,7 @@ builder.Services.AddScoped<ICorporateBankAccountRepository, CorporateBankAccount
 builder.Services.AddScoped(typeof(ITranscationRepository<>), typeof(TransactionRepository<>));
 builder.Services.AddScoped<IUserToUserTransactionRepository, UserToUserTransactionRepository>();
 builder.Services.AddScoped<IBankCardRepository, BankCardRepository>();
+builder.Services.AddScoped<ICompanyBankAssetRepository, CompanyBankAssetRepository>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddHttpClient<IBaseService, BaseService>();
 builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();
