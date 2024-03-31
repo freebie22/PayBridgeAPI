@@ -1,6 +1,7 @@
 ﻿using PayBridgeAPI.Models.MainModels;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using PayBridgeAPI.Models.DTO.CompanyBankAssetDTOs;
 
 namespace PayBridgeAPI.Models.DTO.CorporateBankAccountDTOs
 {
@@ -15,5 +16,6 @@ namespace PayBridgeAPI.Models.DTO.CorporateBankAccountDTOs
         public string RegisteredByManager { get; set; }
         public string BankName { get; set; }
         public string RegistrationDate { get; set; }
+        public ICollection<CompanyBankAssetDTO> BankAssets { get; set; } = new List<CompanyBankAssetDTO>();
     }
 }

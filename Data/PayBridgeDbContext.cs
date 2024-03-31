@@ -23,6 +23,9 @@ namespace PayBridgeAPI.Data
         public DbSet<Manager> Managers { get; set; }
         public DbSet<UserToUserTransaction> UserToUserTransactions { get; set; }
         public DbSet<CompanyBankAsset> CompanyBankAssets { get; set; }
+        public DbSet<CompanyToUserTransaction> CompanyToUserTransactions { get; set; }
+        public DbSet<UserToCompanyTransaction> UserToCompanyTransactions { get; set; }
+        public DbSet<CompanyToCompanyTransaction> CompanyToCompanyTransactions { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)

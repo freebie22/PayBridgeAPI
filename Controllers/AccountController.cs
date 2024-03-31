@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
 using PayBridgeAPI.Models.DTO.BankCardDTOs;
+using PayBridgeAPI.Models.DTO.CompanyBankAssetDTOs;
 using PayBridgeAPI.Models.DTO.CorporateBankAccountDTOs;
 using PayBridgeAPI.Models.MainModels;
 using PayBridgeAPI.Repository;
@@ -218,7 +219,7 @@ namespace PayBridgeAPI.Controllers
             {
                 var query = await _corporateBankAccountRepository.GetAllValues(
                     include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.Manager)
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.Manager).Include(q => q.BankAssets)
                     );
 
                 if (query.Count == 0)
@@ -230,7 +231,7 @@ namespace PayBridgeAPI.Controllers
 
                 foreach (CorporateBankAccount bankAccount in query)
                 {
-                    //List<BankCardDTO> bankCards = new List<BankCardDTO>();
+                    List<CompanyBankAssetDTO> bankAssets = new List<CompanyBankAssetDTO>();
                     CorporateBankAccountDTO account = new CorporateBankAccountDTO()
                     {
                         AccountId = bankAccount.AccountId,
@@ -243,23 +244,24 @@ namespace PayBridgeAPI.Controllers
                         BankName = bankAccount.Bank.ShortBankName,
                         RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
                     };
-                    //foreach (var bankCard in bankAccount.BankCards)
-                    //{
-                    //    BankCardDTO bankCardDTO = new BankCardDTO()
-                    //    {
-                    //        BankCardId = bankCard.BankCardId,
-                    //        CardNumber = bankCard.CardNumber,
-                    //        ExpiryDate = bankCard.ExpiryDate.ToLongDateString(),
-                    //        CVC = bankCard.CVC,
-                    //        OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
-                    //        CurrencyType = bankCard.CurrencyType,
-                    //        Balance = bankCard.Balance,
-                    //        IsActive = bankCard.IsActive,
-                    //        RegistrationDate = bankCard.RegistrationDate.ToLongDateString(),
-                    //    };
-                    //    bankCards.Add(bankCardDTO);
-                    //}
-                    //account.BankCards = bankCards;
+                   foreach(var bankAsset in bankAccount.BankAssets)
+                   {
+                        bankAssets.Add(new CompanyBankAssetDTO()
+                        {
+                            AssetId = bankAsset.AssetId,
+                            AssetUniqueNumber = bankAsset.AssetUniqueNumber,
+                            BankAccountUniqueNumber = bankAsset.CorporateAccount.AccountNumber,
+                            IBAN_Number = bankAsset.IBAN_Number,
+                            CurrencyType = bankAsset.CurrencyType,
+                            Balance = bankAsset.Balance,
+                            IsActive = bankAsset.IsActive,
+                            Status = bankAsset.Status,
+                            BankName = bankAsset.CorporateAccount.Bank.ShortBankName,
+                            ShortCompanyOwnerName = bankAsset.CorporateAccount.AccountOwner.ShortCompanyName,
+                            RegistrationDate = bankAsset.RegistrationDate.ToLongDateString(),
+                        });
+                    }
+                    account.BankAssets = bankAssets;
                     bankAccounts.Add(account);
                 }
 
@@ -311,26 +313,27 @@ namespace PayBridgeAPI.Controllers
                     RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
                 };
 
-                //List<BankCardDTO> bankCards = new();
+                List<CompanyBankAssetDTO> bankAssets = new();
 
-                //foreach (var bankCard in bankAccount.BankCards)
-                //{
-                //    BankCardDTO bankCardDTO = new BankCardDTO()
-                //    {
-                //        BankCardId = bankCard.BankCardId,
-                //        CardNumber = bankCard.CardNumber,
-                //        ExpiryDate = bankCard.ExpiryDate.ToLongDateString(),
-                //        CVC = bankCard.CVC,
-                //        OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
-                //        CurrencyType = bankCard.CurrencyType,
-                //        Balance = bankCard.Balance,
-                //        IsActive = bankCard.IsActive,
-                //        RegistrationDate = bankCard.RegistrationDate.ToLongDateString(),
-                //    };
-                //    bankCards.Add(bankCardDTO);
-                //}
+                foreach (var bankAsset in bankAccount.BankAssets)
+                {
+                    bankAssets.Add(new CompanyBankAssetDTO()
+                    {
+                        AssetId = bankAsset.AssetId,
+                        AssetUniqueNumber = bankAsset.AssetUniqueNumber,
+                        BankAccountUniqueNumber = bankAsset.CorporateAccount.AccountNumber,
+                        IBAN_Number = bankAsset.IBAN_Number,
+                        CurrencyType = bankAsset.CurrencyType,
+                        Balance = bankAsset.Balance,
+                        IsActive = bankAsset.IsActive,
+                        Status = bankAsset.Status,
+                        BankName = bankAsset.CorporateAccount.Bank.ShortBankName,
+                        ShortCompanyOwnerName = bankAsset.CorporateAccount.AccountOwner.ShortCompanyName,
+                        RegistrationDate = bankAsset.RegistrationDate.ToLongDateString(),
+                    });
+                }
 
-                //bankAccountDTO.BankCards = bankCards;
+                bankAccountDTO.BankAssets = bankAssets;
 
                 _response.Result = bankAccountDTO;
                 _response.StatusCode = HttpStatusCode.OK;

@@ -1,30 +1,29 @@
 ﻿using PayBridgeAPI.Models.MainModels;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
 
 namespace PayBridgeAPI.Models.Transcations
 {
-    public class UserToCompanyTransaction : Transaction
+    public class CompanyToCompanyTransaction : Transaction
     {
         [Required]
-        public int SenderId { get; set; }
-        [ForeignKey(nameof(SenderId))]
-        public virtual PersonalBankAccount Sender { get; set; }
+        public int CompanySenderId { get; set; }
+        [ForeignKey(nameof(CompanySenderId))]
+        public virtual CorporateBankAccount CompanySender { get; set; }
         [Required]
         public int CompanyReceiverId { get; set; }
         [ForeignKey(nameof(CompanyReceiverId))]
         public virtual CorporateBankAccount CompanyReceiver { get; set; }
         [Required]
-        public int SenderBankCardId { get; set; }
-        [ForeignKey(nameof(SenderBankCardId))]
-        public virtual BankCard BankCard { get; set; }
-        [Required]
         public int ReceiverBankAssetId { get; set; }
         [ForeignKey(nameof(ReceiverBankAssetId))]
         public virtual CompanyBankAsset ReceiverBankAsset { get; set; }
+        [Required]
+        public int SenderBankAssetId { get; set; }
+        [ForeignKey(nameof(SenderBankAssetId))]
+        public virtual CompanyBankAsset SenderBankAsset { get; set; }
 
         [Required]
         public string StripePaymentIntentId { get; set; }
-
     }
 }
