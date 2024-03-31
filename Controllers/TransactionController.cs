@@ -12,6 +12,7 @@ using PayBridgeAPI.Services.RESTServices;
 using Stripe;
 using System.Net;
 using PayBridgeAPI.Utility;
+using PayBridgeAPI.Repository.CompanyBankAssetRepository;
 
 namespace PayBridgeAPI.Controllers
 {
@@ -20,24 +21,33 @@ namespace PayBridgeAPI.Controllers
     public class TransactionController : ControllerBase
     {
         private readonly IUserToUserTransactionRepository _userToUserRepo;
-        private readonly IPersonalBankAccountRepository _personalAccountRepo;
+        private readonly IUserToCompanyTransactionRepository _userToCompanyRepo;
+        private readonly ICompanyToUserTransactionRepository _companyToUserRepo;
+        private readonly ICompanyToCompanyTransactionRepository _companyToCompanyRepo;
         private readonly IBankCardRepository _bankCardRepo;
+        private readonly ICompanyBankAssetRepository _companyBankAssetRepo;
         private readonly IConfiguration _configuration;
         private readonly IBaseService _baseService;
         protected APIResponse _response;
 
-        public TransactionController(IUserToUserTransactionRepository userToUserRepo, IPersonalBankAccountRepository personalAccountRepo,
-            IBaseService baseService, IBankCardRepository bankCardRepo, IConfiguration configuration)
+        public TransactionController(IUserToUserTransactionRepository userToUserRepo,
+            IUserToCompanyTransactionRepository userToCompanyRepo,
+            ICompanyToUserTransactionRepository companyToUserRepo,
+            ICompanyToCompanyTransactionRepository companyToCompanyRepo,
+            IBaseService baseService, IBankCardRepository bankCardRepo, IConfiguration configuration, ICompanyBankAssetRepository companyBankAssetRepo)
         {
             _userToUserRepo = userToUserRepo;
-            _personalAccountRepo = personalAccountRepo;
+            _userToCompanyRepo = userToCompanyRepo;
+            _companyToUserRepo = companyToUserRepo;
+            _companyToCompanyRepo = companyToCompanyRepo;
             _bankCardRepo = bankCardRepo;
             _response = new APIResponse();
             _configuration = configuration;
             _baseService = baseService;
+            _companyBankAssetRepo = companyBankAssetRepo;
         }
 
-        [HttpGet("GetUserToUserTransactions")]
+        [HttpGet("GetAllUserToUserTransactions")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<APIResponse>> GetAllUserToUserTransactions(
@@ -182,11 +192,11 @@ namespace PayBridgeAPI.Controllers
         }
 
 
-        [HttpPost("MakeTransaction")]
+        [HttpPost("MakeUserToUserTransaction")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> MakeTransaction([FromBody]UserToUserTransactionCreateDTO transactionDTO)
+        public async Task<ActionResult<APIResponse>> MakeUserToUserTransaction([FromBody]UserToUserTransactionCreateDTO transactionDTO)
         {
             try
             {
@@ -223,9 +233,7 @@ namespace PayBridgeAPI.Controllers
                     RequestType = API_Request_Type.GET
                 });
 
-                var currencyDeserializaed = JsonConvert.DeserializeObject<List<Currency>>(currencyResponse);
-
-                IEnumerable<CurrencyDTO> currency = currencyDeserializaed.GetCurrency();
+                IEnumerable<CurrencyDTO> currency = JsonConvert.DeserializeObject<IEnumerable<CurrencyDTO>>(currencyResponse);
 
                 long? amount = null;
 
@@ -291,7 +299,7 @@ namespace PayBridgeAPI.Controllers
                         receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
                         break;
                     case "eur":
-                        senderAccount.Balance -= transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "eur").Select(c => c.PriceBuy).FirstOrDefault();
+                        senderAccount.Balance -= transaction.Amount * currency.Where(c => string.Equals(c.CurrencyCode.ToLower(), "eur")).Select(c => c.PriceBuy).FirstOrDefault();
                         receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "eur").Select(c => c.PriceBuy).FirstOrDefault();
                         break;
                 }
@@ -322,5 +330,288 @@ namespace PayBridgeAPI.Controllers
                 }
             }
         }
+
+        [HttpGet("GetAllUserToCompanyTransactions")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetAllUserToCompanyTransactions(
+           [FromQuery(Name = "currencyCode")] string currencyCode = "",
+           [FromQuery(Name = "transactionNumber")] string transactionNumber = "")
+        {
+            try
+            {
+                List<UserToCompanyTransaction> transactionsQuery;
+
+                if (!string.IsNullOrEmpty(currencyCode))
+                {
+                    transactionsQuery = await _userToCompanyRepo.GetAllTransactions(
+                    predicate:
+                    t => t.CurrencyCode == currencyCode,
+                    include:
+                    t => t
+                    .Include(t => t.BankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.BankCard.Account.Bank)
+                    .Include(t => t.ReceiverBankAsset).ThenInclude(t => t.CorporateAccount).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankAsset.CorporateAccount.Bank));
+                }
+
+                if (!string.IsNullOrEmpty(transactionNumber))
+                {
+                    transactionsQuery = await _userToCompanyRepo.GetAllTransactions(
+                    predicate:
+                    t => t.TransactionNumber == transactionNumber,
+                    include:
+                    t => t
+                    .Include(t => t.BankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.BankCard.Account.Bank)
+                    .Include(t => t.ReceiverBankAsset).ThenInclude(t => t.CorporateAccount).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankAsset.CorporateAccount.Bank));
+                }
+
+                else
+                {
+                    transactionsQuery = await _userToCompanyRepo.GetAllTransactions(
+                    include:
+                    t => t
+                    .Include(t => t.BankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.BankCard.Account.Bank)
+                    .Include(t => t.ReceiverBankAsset).ThenInclude(t => t.CorporateAccount).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankAsset.CorporateAccount.Bank));
+                }
+
+
+                if (transactionsQuery.Count == 0)
+                {
+                    throw new NullReferenceException("Error. No user to company transactions were found in database by your request");
+                }
+
+                List<UserToCompanyTransactionDTO> transactions = new();
+                foreach (var transaction in transactionsQuery)
+                {
+                    transactions.Add(new UserToCompanyTransactionDTO()
+                    {
+                        TransactionId = transaction.TransactionId,
+                        TransactionUniqueNumber = transaction.TransactionNumber,
+                        SenderCredentials = $"{transaction.Sender.AccountOwner.LastName} {transaction.Sender.AccountOwner.FirstName[0]}.{transaction.Sender.AccountOwner.MiddleName[0]}",
+                        SenderBankCardNumber = transaction.BankCard.CardNumber,
+                        SenderBankEmitent = transaction.Sender.Bank.ShortBankName,
+                        ReceiverCompanyShortName = transaction.CompanyReceiver.AccountOwner.ShortCompanyName,
+                        Receiver_CBA_IBANNumber = transaction.ReceiverBankAsset.IBAN_Number,
+                        ReceiverBankEmitent = transaction.CompanyReceiver.Bank.ShortBankName,
+                        CurrencyCode = transaction.CurrencyCode,
+                        Amount = transaction.Amount,
+                        TransactionType = transaction.TransactionType,
+                        DateOfTransaction = transaction.DateOfTransaction.ToLongDateString(),
+                        Description = transaction.Description,
+                        Fee = transaction.Fee ?? 0.0m,
+                        Status = transaction.Status,
+                        StripePaymentIntentID = transaction.StripePaymentIntentId
+                    });
+                }
+
+                _response.Result = transactions;
+                _response.StatusCode = HttpStatusCode.OK;
+                _response.IsSuccess = true;
+
+                return Ok(_response);
+            }
+
+            catch (NullReferenceException ex)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.NotFound;
+                _response.ErrorMessages.Add(ex.Message);
+                return NotFound(_response);
+            }
+        }
+
+        [HttpGet("GetUserToCompanyTransaction/{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetUserToCompanyTransaction(int id)
+        {
+            try
+            {
+                var transactionQuery = await _userToCompanyRepo.GetSingleTransaction(
+                    predicate:
+                    t => t.TransactionId == id,
+                    include:
+                    t => t
+                    .Include(t => t.BankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.BankCard.Account.Bank)
+                    .Include(t => t.ReceiverBankAsset).ThenInclude(t => t.CorporateAccount).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankAsset.CorporateAccount.Bank));
+
+                if (transactionQuery == null)
+                {
+                    throw new NullReferenceException("Error. No user to company transaction were found in database by your request");
+                }
+
+                UserToCompanyTransactionDTO transaction = new()
+                {
+                    TransactionId = transactionQuery.TransactionId,
+                    TransactionUniqueNumber = transactionQuery.TransactionNumber,
+                    SenderCredentials = $"{transactionQuery.Sender.AccountOwner.LastName} {transactionQuery.Sender.AccountOwner.FirstName[0]}.{transactionQuery.Sender.AccountOwner.MiddleName[0]}",
+                    SenderBankCardNumber = transactionQuery.BankCard.CardNumber,
+                    SenderBankEmitent = transactionQuery.Sender.Bank.ShortBankName,
+                    ReceiverCompanyShortName = transactionQuery.CompanyReceiver.AccountOwner.ShortCompanyName,
+                    Receiver_CBA_IBANNumber = transactionQuery.ReceiverBankAsset.IBAN_Number,
+                    ReceiverBankEmitent = transactionQuery.CompanyReceiver.Bank.ShortBankName,
+                    CurrencyCode = transactionQuery.CurrencyCode,
+                    Amount = transactionQuery.Amount,
+                    TransactionType = transactionQuery.TransactionType,
+                    DateOfTransaction = transactionQuery.DateOfTransaction.ToLongDateString(),
+                    Description = transactionQuery.Description,
+                    Fee = transactionQuery.Fee ?? 0.0m,
+                    Status = transactionQuery.Status,
+                    StripePaymentIntentID = transactionQuery.StripePaymentIntentId
+                };
+
+                _response.Result = transaction;
+                _response.StatusCode = HttpStatusCode.OK;
+                _response.IsSuccess = true;
+
+                return Ok(_response);
+            }
+
+            catch (NullReferenceException ex)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.NotFound;
+                _response.ErrorMessages.Add(ex.Message);
+                return NotFound(_response);
+            }
+        }
+
+
+        [HttpPost("MakeUserToCompanyTransaction")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> MakeUserToCompanyTransaction([FromBody] UserToCompanyTransactionCreateDTO transactionDTO)
+        {
+            try
+            {
+                if (transactionDTO == null)
+                {
+                    throw new NullReferenceException("Error. Your request body was null.");
+                }
+
+                var senderAccount = await _bankCardRepo.GetValueAsync(
+                    filter: a => a.CardNumber == transactionDTO.SenderBankCardNumber,
+                    include: a => a.Include(a => a.Account).ThenInclude(a => a.AccountOwner)
+                    );
+
+                var receiverAccount = await _companyBankAssetRepo.GetValueAsync(
+                    filter: a => a.IBAN_Number == transactionDTO.ReceiverIBANNumber,
+                    include: a => a.Include(a => a.CorporateAccount).ThenInclude(a => a.AccountOwner)
+                    );
+
+                if (senderAccount == null || receiverAccount == null)
+                {
+                    throw new NullReferenceException("Error. Receiver or sender account wasn't found by your request. Please, check bank card or IBAN Number info.");
+                }
+
+                if ((senderAccount.Balance - transactionDTO.Amount) <= 0)
+                {
+                    throw new InvalidOperationException("Error. Sender account balance cannot afford transaction ammount");
+                }
+
+
+                var currencyResponse = await _baseService.SendAsync(new APIRequest()
+                {
+                    //Development URL
+                    RequestURL = "https://localhost:7112/api/currency/GetCurrencyInfo",
+                    RequestType = API_Request_Type.GET
+                });
+
+                IEnumerable<CurrencyDTO> currency = JsonConvert.DeserializeObject<IEnumerable<CurrencyDTO>>(currencyResponse);
+
+                long? amount = null;
+
+                switch (transactionDTO.CurrencyCode.ToLower())
+                {
+                    case "uah":
+                        amount = (int)transactionDTO.Amount * 100;
+                        break;
+                    case "usd":
+                        amount = (int)transactionDTO.Amount * 100;
+                        break;
+                    case "eur":
+                        amount = (int)transactionDTO.Amount * 100;
+                        break;
+                }
+
+                StripeConfiguration.ApiKey = _configuration["StripeSettings:SecretKey"];
+                PaymentIntentCreateOptions options = new PaymentIntentCreateOptions()
+                {
+                    Amount = amount,
+                    Currency = transactionDTO.CurrencyCode.ToLower(),
+                    PaymentMethodTypes = new List<string>()
+                    {
+                        "card"
+                    },
+                    Description = $"{transactionDTO.Description}",
+                };
+
+                PaymentIntentService service = new PaymentIntentService();
+                PaymentIntent response = service.Create(options);
+
+                UserToCompanyTransaction transaction = new UserToCompanyTransaction()
+                {
+                    CurrencyCode = response.Currency,
+                    Amount = response.Amount / 100,
+                    TransactionType = "Переказ з банківської карти на рахунок юридчної особи/ФОП",
+                    DateOfTransaction = response.Created.ToLocalTime(),
+                    Description = response.Description,
+                    Fee = response.ApplicationFeeAmount,
+                    SenderId = senderAccount.Account.AccountId,
+                    CompanyReceiverId = receiverAccount.CorporateAccount.AccountId,
+                    SenderBankCardId = senderAccount.BankCardId,
+                    ReceiverBankAssetId = receiverAccount.AssetId,
+                    StripePaymentIntentId = response.Id,
+                    Status = response.Status,
+                };
+
+                await _userToCompanyRepo.CreateTransaction(transaction);
+                await _userToCompanyRepo.SaveChanges();
+
+                switch (transaction.CurrencyCode)
+                {
+                    case "uah":
+                        senderAccount.Balance -= transaction.Amount;
+                        receiverAccount.Balance += transaction.Amount;
+                        break;
+                    case "usd":
+                        senderAccount.Balance -= transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
+                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
+                        break;
+                    case "eur":
+                        senderAccount.Balance -= transaction.Amount * currency.Where(c => string.Equals(c.CurrencyCode.ToLower(), "eur")).Select(c => c.PriceBuy).FirstOrDefault();
+                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "eur").Select(c => c.PriceBuy).FirstOrDefault();
+                        break;
+                }
+
+
+                await _bankCardRepo.UpdateAsync(senderAccount);
+                await _companyBankAssetRepo.UpdateAsync(receiverAccount);
+
+                _response.StatusCode = HttpStatusCode.OK;
+                _response.Result = "Переказ виконано успішно. Деталі транзакції Ви можете переглянути в особистому кабінеті";
+                _response.IsSuccess = true;
+
+
+                return Ok(_response);
+            }
+
+            catch (Exception ex)
+            {
+                if (ex is NullReferenceException || ex is InvalidOperationException)
+                {
+                    _response.ErrorMessages.Add(ex.Message);
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.BadRequest;
+                    return BadRequest(_response);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
+
     }
 }

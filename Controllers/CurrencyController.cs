@@ -22,7 +22,7 @@ namespace PayBridgeAPI.Controllers
         }
 
 
-        [HttpGet("GetCurrencyRate")]
+        [HttpGet("GetCurrencyInfo")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<APIResponse>> GetCurrencyInfo()
@@ -42,7 +42,7 @@ namespace PayBridgeAPI.Controllers
 
                     Response.Headers.Append("PrivatBankAPI", $"Request was made at {DateTime.Now}");
 
-                    return Ok(_response);
+                    return Ok(_response.Result);
                 }
 
                 else

@@ -97,6 +97,9 @@ builder.Services.AddScoped<IPersonalBankAccountRepository, PersonalBankAccountRe
 builder.Services.AddScoped<ICorporateBankAccountRepository, CorporateBankAccountRepository>();
 builder.Services.AddScoped(typeof(ITranscationRepository<>), typeof(TransactionRepository<>));
 builder.Services.AddScoped<IUserToUserTransactionRepository, UserToUserTransactionRepository>();
+builder.Services.AddScoped<IUserToCompanyTransactionRepository, UserToCompanyTransactionRepository>();
+builder.Services.AddScoped<ICompanyToUserTransactionRepository, CompanyToUserTransactionRepository>();
+builder.Services.AddScoped<ICompanyToCompanyTransactionRepository, CompanyToCompanyTransactionRepository>();
 builder.Services.AddScoped<IBankCardRepository, BankCardRepository>();
 builder.Services.AddScoped<ICompanyBankAssetRepository, CompanyBankAssetRepository>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

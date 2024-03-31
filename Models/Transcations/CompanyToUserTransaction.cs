@@ -22,8 +22,5 @@ namespace PayBridgeAPI.Models.Transcations
         public int SenderBankAssetId { get; set; }
         [ForeignKey(nameof(SenderBankAssetId))]
         public virtual CompanyBankAsset SenderBankAsset { get; set; }
-
-        [Required]
-        public string StripePaymentIntentId { get; set; }
     }
 }
