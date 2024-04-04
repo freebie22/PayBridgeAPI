@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PayBridgeAPI.Data;
 
@@ -11,9 +12,11 @@ using PayBridgeAPI.Data;
 namespace PayBridgeAPI.Migrations
 {
     [DbContext(typeof(PayBridgeDbContext))]
-    partial class PayBridgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240403171954_addedChatModelsToDatabase")]
+    partial class addedChatModelsToDatabase
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -401,22 +404,10 @@ namespace PayBridgeAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("ChatName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<int>("ManagerId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("ManagerId");
 
                     b.ToTable("ChatRooms");
                 });
@@ -1099,17 +1090,6 @@ namespace PayBridgeAPI.Migrations
                     b.Navigation("ChatRoom");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.ChatModels.ChatRoom", b =>
-                {
-                    b.HasOne("PayBridgeAPI.Models.MainModels.Manager", "Manager")
-                        .WithMany()
-                        .HasForeignKey("ManagerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Manager");
                 });
 
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CompanyBankAsset", b =>

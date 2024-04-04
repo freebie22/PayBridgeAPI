@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PayBridgeAPI.Data;
+using PayBridgeAPI.Models.MainModels;
 using PayBridgeAPI.Models.User;
 using PayBridgeAPI.Repository;
 using PayBridgeAPI.Repository.CompanyBankAssetRepository;
@@ -12,7 +13,9 @@ using PayBridgeAPI.Repository.MainRepo;
 using PayBridgeAPI.Repository.TransactionRepo;
 using PayBridgeAPI.Repository.UserRepo;
 using PayBridgeAPI.Services.AzureBlobs;
+using PayBridgeAPI.Services.ChatService;
 using PayBridgeAPI.Services.RESTServices;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -20,11 +23,18 @@ var builder = WebApplication.CreateBuilder(args);
 var key = builder.Configuration.GetValue<string>("ApiSetting:Secret");
 
 // Add services to the container.
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ReactApp", corsOptions =>
+    {
+        corsOptions.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+    });
+});
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {
     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
 });
+builder.Services.AddSignalR();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddAuthentication(options =>
 {
@@ -107,6 +117,7 @@ builder.Services.AddHttpClient<IBaseService, BaseService>();
 builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();
 builder.Services.AddSingleton<IBaseService, BaseService>();
 builder.Services.AddSingleton<ICurrencyService, CurrencyService>();
+builder.Services.AddSingleton(opts => new ConcurrentDictionary<string, UserConnection>());
 
 var app = builder.Build();
 
@@ -122,7 +133,9 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCors("ReactApp");
 
 app.MapControllers();
+app.MapHub<ChatService>("/Chat");
 
 app.Run();
