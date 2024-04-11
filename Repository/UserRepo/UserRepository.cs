@@ -17,15 +17,15 @@ namespace PayBridgeAPI.Repository.UserRepo
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
-        private readonly IBlobService _blobService;
+        //private readonly IBlobService _blobService;
         private string _apiKey;
 
-        public UserRepository(RoleManager<IdentityRole> roleManager, UserManager<ApplicationUser> userManager, IConfiguration configuration, IBlobService blobService)
+        public UserRepository(RoleManager<IdentityRole> roleManager, UserManager<ApplicationUser> userManager, IConfiguration configuration/*, IBlobService blobService*/)
         {
             _roleManager = roleManager;
             _userManager = userManager;
             _apiKey = configuration.GetValue<string>("ApiSettings:Secret");
-            _blobService = blobService;
+            //_blobService = blobService;
         }
 
         public async Task<bool> IsUniqueLoginInfo(string userName, string email)
@@ -85,10 +85,9 @@ namespace PayBridgeAPI.Repository.UserRepo
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim("Id", user.Id),
-                    new Claim(ClaimTypes.Name, user.UserName),
+                    new Claim("id", user.Id),
+                    new Claim("userName", user.UserName),
                     new Claim(ClaimTypes.Email, user.Email),
-                    new Claim("phoneNumber", user.PhoneNumber),
                     new Claim(ClaimTypes.Role, userRole.First())
                 }),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(secretKey), SecurityAlgorithms.HmacSha256Signature),
@@ -120,8 +119,8 @@ namespace PayBridgeAPI.Repository.UserRepo
 
             if(registerInfo.ProfileImage != null)
             {
-                string image = $"{Guid.NewGuid()}{Path.GetExtension(registerInfo.ProfileImage.FileName)}";
-                user.ProfileImage = Encoding.ASCII.GetBytes(await _blobService.UpdateBlob(image, registerInfo.ProfileImage));
+                //string image = $"{Guid.NewGuid()}{Path.GetExtension(registerInfo.ProfileImage.FileName)}";
+                //user.ProfileImage = Encoding.ASCII.GetBytes(await _blobService.UpdateBlob(image, registerInfo.ProfileImage));
             }
 
             else
@@ -158,7 +157,7 @@ namespace PayBridgeAPI.Repository.UserRepo
                     Email = user.Email,
                     PhoneNumber = registerInfo.PhoneNumber,
                     Username = registerInfo.Username,
-                    ProfileImage = Encoding.ASCII.GetString(user.ProfileImage) ?? "No Image"
+                    ProfileImage = Encoding.ASCII.GetString(user.ProfileImage) != null ? Encoding.ASCII.GetString(user.ProfileImage) : "No Image"
                 };
 
                 return newUser;

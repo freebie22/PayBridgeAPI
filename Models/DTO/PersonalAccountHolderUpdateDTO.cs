@@ -10,6 +10,7 @@ namespace PayBridgeAPI.Models.DTO
         public string LastName { get; set; }
         public string MiddleName { get; set; }
         public string DateOfBirth { get; set; }
+        public string PhoneNumber { get; set; }
         public int PostalCode { get; set; }
         public string Country { get; set; }
         public string State { get; set; }

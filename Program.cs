@@ -1,6 +1,7 @@
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -14,6 +15,7 @@ using PayBridgeAPI.Repository.TransactionRepo;
 using PayBridgeAPI.Repository.UserRepo;
 using PayBridgeAPI.Services.AzureBlobs;
 using PayBridgeAPI.Services.ChatService;
+using PayBridgeAPI.Services.EmailService;
 using PayBridgeAPI.Services.RESTServices;
 using System.Collections.Concurrent;
 using System.Text;
@@ -92,8 +94,9 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddDbContext<PayBridgeDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<PayBridgeDbContext>();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<PayBridgeDbContext>().AddDefaultTokenProviders();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddSingleton(u => new BlobServiceClient(builder.Configuration.GetConnectionString("ServiceClient")));
 builder.Services.AddSingleton<IBlobService, BlobService>();
@@ -118,6 +121,13 @@ builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();
 builder.Services.AddSingleton<IBaseService, BaseService>();
 builder.Services.AddSingleton<ICurrencyService, CurrencyService>();
 builder.Services.AddSingleton(opts => new ConcurrentDictionary<string, UserConnection>());
+builder.Services.AddTransient<IEmailSender, EmailSender>();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.IdleTimeout = TimeSpan.FromDays(7);
+    options.Cookie.IsEssential = true;
+});
 
 var app = builder.Build();
 
@@ -143,6 +153,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseCors("ReactApp");
+app.UseSession();
 
 app.MapControllers();
 app.MapHub<ChatService>("/Chat");

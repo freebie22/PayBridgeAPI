@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Mailjet.Client.Resources;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PayBridgeAPI.Data;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
 using PayBridgeAPI.Models.DTO.CorporateAccountHolderDTOs;
@@ -23,12 +25,15 @@ namespace PayBridgeAPI.Controllers
         private readonly IPersonalAccountRepository _personalRepo;
         private readonly ICorporateAccountRepository _corporateRepo;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly PayBridgeDbContext _context;
         protected APIResponse _response;
 
-        public AccountHolderController(IPersonalAccountRepository personalRepo, ICorporateAccountRepository corporateRepo)
+        public AccountHolderController(IPersonalAccountRepository personalRepo, ICorporateAccountRepository corporateRepo, PayBridgeDbContext context, UserManager<ApplicationUser> userManager)
         {
             _personalRepo = personalRepo;
             _corporateRepo = corporateRepo;
+            _context = context;
+            _userManager = userManager;
             _response = new APIResponse();
         }
 
@@ -36,11 +41,20 @@ namespace PayBridgeAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetPersonalAccountHolders()
+        public async Task<ActionResult<APIResponse>> GetPersonalAccountHolders([FromQuery]string holderUserId = "")
         {
             try
             {
-                var query = await _personalRepo.GetAllValues(include: q => q.Include(q => q.User));
+                IList<PersonalAccountHolder> query;
+
+                if(!string.IsNullOrEmpty(holderUserId))
+                {
+                    query = await _personalRepo.GetAllValues(include: q => q.Include(q => q.User), filter: q => q.UserId == holderUserId);
+                }
+                else
+                {
+                    query = await _personalRepo.GetAllValues(include: q => q.Include(q => q.User));
+                }
 
                 if (query.Count == 0)
                 {
@@ -57,7 +71,7 @@ namespace PayBridgeAPI.Controllers
                        MiddleName = holder.MiddleName ?? "Не вказано",
                        DateOfBirth = holder.DateOfBirth.ToLongDateString(),
                        Email = holder.User.Email,
-                       PhoneNumber = holder.User.Email,
+                       PhoneNumber = holder.User.PhoneNumber,
                        PostalCode = holder.PostalCode.ToString(),
                        Country = holder.Country,
                        State = holder.State,
@@ -66,7 +80,7 @@ namespace PayBridgeAPI.Controllers
                        PassportSeries = holder.PassportSeries ?? "ID-картка",
                        PassportNumber = holder.PassportNumber,
                        TaxIdentificationNumber = holder.TaxIdentificationNumber,
-                       //ProfileImage = Encoding.ASCII.GetString(holder.User.ProfileImage)
+                       ProfileImage = /*Encoding.ASCII.GetString(holder.User.ProfileImage) != null ? Encoding.ASCII.GetString(holder.User.ProfileImage) :*/ "No Image"
                     });
                 }
 
@@ -85,19 +99,24 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpGet("GetPersonalAccountHolder/{id:int}")]
+        [HttpGet("GetPersonalAccountHolder")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetPersonalAccountHolder(int id)
+        public async Task<ActionResult<APIResponse>> GetPersonalAccountHolder([FromQuery]string userId)
         {
             try
             {
-                var holder = await _personalRepo.GetValueAsync(filter: a => a.AccountId == id, include: q => q.Include(q => q.User));
+                if(string.IsNullOrEmpty(userId))
+                {
+                    throw new NullReferenceException("Error. Query parameter cannot be null or empty.");
+                }
+
+                var holder = await _personalRepo.GetValueAsync(filter: a => a.UserId == userId, include: q => q.Include(q => q.User));
 
                 if (holder == null)
                 {
-                    throw new NullReferenceException($"Error. No account holders have been found in database by id {id}");
+                    throw new NullReferenceException($"Error. No account holders have been found in database by userd id {userId}");
                 }
 
                 PersonalAccountHolderDTO account = new PersonalAccountHolderDTO()
@@ -107,7 +126,7 @@ namespace PayBridgeAPI.Controllers
                     MiddleName = holder.MiddleName ?? "Не вказано",
                     DateOfBirth = holder.DateOfBirth.ToLongDateString(),
                     Email = holder.User.Email,
-                    PhoneNumber = holder.User.Email,
+                    PhoneNumber = holder.User.PhoneNumber,
                     PostalCode = holder.PostalCode.ToString(),
                     Country = holder.Country,
                     State = holder.State,
@@ -116,7 +135,7 @@ namespace PayBridgeAPI.Controllers
                     PassportSeries = holder.PassportSeries ?? "ID-картка",
                     PassportNumber = holder.PassportNumber,
                     TaxIdentificationNumber = holder.TaxIdentificationNumber,
-                    //ProfileImage = Encoding.ASCII.GetString(holder.User.ProfileImage)
+                    ProfileImage = /*Encoding.ASCII.GetString(holder.User.ProfileImage)*/ "No Image"
                 };
 
                 _response.Result = account;
@@ -137,7 +156,7 @@ namespace PayBridgeAPI.Controllers
         [HttpPost("CreatePersonalAccountHolder")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<APIResponse>> CreatePersonalAccountHolder([FromForm] PersonalAccountHolderCreateDTO holderDTO)
+        public async Task<ActionResult<APIResponse>> CreatePersonalAccountHolder([FromBody] PersonalAccountHolderCreateDTO holderDTO)
         {
             try
             {
@@ -202,7 +221,7 @@ namespace PayBridgeAPI.Controllers
         [HttpPut("UpdatePersonalAccountHolder/{id:int}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<APIResponse>> UpdatePersonalAccountHolder(int id, [FromForm] PersonalAccountHolderUpdateDTO accountDTO)
+        public async Task<ActionResult<APIResponse>> UpdatePersonalAccountHolder(int id, [FromBody] PersonalAccountHolderUpdateDTO accountDTO)
         {
             try
             {
@@ -276,12 +295,14 @@ namespace PayBridgeAPI.Controllers
             try
             {
 
-                var existingAccount = await _personalRepo.GetValueAsync(filter: m => m.AccountId == id, isTracked: false);
+                var existingAccount = await _personalRepo.GetValueAsync(filter: m => m.AccountId == id, include: m => m.Include(m => m.User), isTracked: false);
 
                 if (existingAccount == null)
                 {
                     throw new ArgumentException($"Error. Account with id of {id} doesn't exist");
                 }
+
+                var accountUser = await _userManager.FindByIdAsync(existingAccount.UserId);
 
                 PersonalAccountHolderUpdateDTO updateDTO = new PersonalAccountHolderUpdateDTO()
                 {
@@ -289,6 +310,7 @@ namespace PayBridgeAPI.Controllers
                     LastName = existingAccount.LastName,
                     MiddleName = existingAccount.MiddleName,
                     DateOfBirth = existingAccount.DateOfBirth.ToLongDateString(),
+                    PhoneNumber = existingAccount.User.PhoneNumber,
                     PostalCode = existingAccount.PostalCode,
                     Country = existingAccount.Country,
                     State = existingAccount.State,
@@ -317,9 +339,13 @@ namespace PayBridgeAPI.Controllers
                     PassportNumber = updateDTO.PassportNumber,
                     TaxIdentificationNumber = updateDTO.TaxIdentificationNumber,
                     UserId = existingAccount.UserId,
-                    IsActive = updateDTO.IsActive,
+                    IsActive = updateDTO.IsActive
                 };
 
+                accountUser.PhoneNumber = updateDTO.PhoneNumber;
+
+                await _userManager.UpdateAsync(accountUser);
+                await _context.SaveChangesAsync();
 
                 await _personalRepo.UpdateAccount(accountHolder);
                 await _personalRepo.SaveChanges();
