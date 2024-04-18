@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PayBridgeAPI.Models;
 using PayBridgeAPI.Models.DTO;
@@ -31,14 +32,36 @@ namespace PayBridgeAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetPersonalBankAccounts()
+        public async Task<ActionResult<APIResponse>> GetPersonalBankAccounts([FromQuery]int? accountHolderId)
         {
             try
             {
-                var query = await _personalAccountRepository.GetAllValues(
+                IList<PersonalBankAccount> query = new List<PersonalBankAccount>();
+
+                if(accountHolderId != null && accountHolderId <= 0)
+                {
+                    throw new ArgumentException("Помилка. Ідентифікатор власника рахунку не може бути менший або рівний 0");
+                }
+
+                else if(accountHolderId != null)
+                {
+                    query = await _personalAccountRepository.GetAllValues(
+                    filter:
+                        q => q.AccountOwnerId == accountHolderId,
                     include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank).Include(q => q.BankCards)
+                        q => q.Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.BankCards)
                     );
+                }
+
+                else
+                {
+                    query = await _personalAccountRepository.GetAllValues(
+                    include:
+                        q => q.Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.BankCards)
+                    );
+                }
+
+
 
                 if (query.Count == 0)
                 {
@@ -55,8 +78,9 @@ namespace PayBridgeAPI.Controllers
                         AccountId = bankAccount.AccountId,
                         AccountNumber = bankAccount.AccountNumber,
                         AccountOwnerFullName = $"{bankAccount.AccountOwner.LastName} " + $"{bankAccount.AccountOwner.FirstName} " + $"{bankAccount.AccountOwner.MiddleName}",
+                        IsActive = bankAccount.IsActive,
+                        Status = bankAccount.Status,
                         AccountType = bankAccount.AccountType,
-                        RegistratedByManager = $"{bankAccount.AccountManager.LastName} " + $"{bankAccount.AccountManager.FirstName} " + $"{bankAccount.AccountManager.MiddleName}",
                         BankName = bankAccount.Bank.ShortBankName,
                         RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
                     };
@@ -86,7 +110,7 @@ namespace PayBridgeAPI.Controllers
 
             }
 
-            catch (NullReferenceException ex)
+            catch (Exception ex)
             {
                 _response.IsSuccess = false;
                 _response.StatusCode = HttpStatusCode.BadRequest;
@@ -95,20 +119,20 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpGet("GetPersonalBankAccount/{id:int}")]
+        [HttpGet("GetPersonalBankAccount/{accountId:int}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetPersonalBankAccount(int id)
+        public async Task<ActionResult<APIResponse>> GetPersonalBankAccount(int accountId)
         {
             try
             {
-                var bankAccount = await _personalAccountRepository.GetValueAsync(filter: b => b.AccountId == id, include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountManager).Include(q => q.Bank).Include(q => q.BankCards));
+                var bankAccount = await _personalAccountRepository.GetValueAsync(filter: b => b.AccountOwnerId == accountId, include:
+                        q => q.Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.BankCards));
 
                 if (bankAccount == null)
                 {
-                    throw new NullReferenceException($"Error. No bank accounts have been found in database by id {id}");
+                    throw new NullReferenceException($"Error. No bank accounts have been found in database by id {accountId}");
                 }
 
                 PersonalBankAccountDTO bankAccountDTO = new PersonalBankAccountDTO()
@@ -116,8 +140,9 @@ namespace PayBridgeAPI.Controllers
                     AccountId = bankAccount.AccountId,
                     AccountNumber = bankAccount.AccountNumber,
                     AccountOwnerFullName = $"{bankAccount.AccountOwner.LastName} " + $"{bankAccount.AccountOwner.FirstName} " + $"{bankAccount.AccountOwner.MiddleName}",
+                    Status = bankAccount.Status,
+                    IsActive = bankAccount.IsActive,
                     AccountType = bankAccount.AccountType,
-                    RegistratedByManager = $"{bankAccount.AccountManager.LastName} " + $"{bankAccount.AccountManager.FirstName} " + $"{bankAccount.AccountManager.MiddleName}",
                     BankName = bankAccount.Bank.ShortBankName,
                     RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
                 };
@@ -159,7 +184,7 @@ namespace PayBridgeAPI.Controllers
         }
 
         [HttpPost("RegisterPersonalBankAccount")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<APIResponse>> RegisterPersonalBankAccount([FromBody] PersonalBankAccountCreateDTO bankAccountDTO)
         {
@@ -173,11 +198,10 @@ namespace PayBridgeAPI.Controllers
 
                 PersonalBankAccount bankAccount = new PersonalBankAccount()
                 {
-                   AccountType = bankAccountDTO.AccountType,
+                   AccountType = "Рахунок фізичної особи",
                    IsActive = false,
                    Status = "Рахунок очікує на активацію",
                    AccountOwnerId = bankAccountDTO.AccountOwnerId,
-                   ManagerId = bankAccountDTO.ManagerId,
                    BankId = bankAccountDTO.BankId,
                 };
 
@@ -185,11 +209,11 @@ namespace PayBridgeAPI.Controllers
                 await _personalAccountRepository.CreateAsync(bankAccount);
                 await _personalAccountRepository.SaveChanges();
 
-                _response.Result = bankAccount;
+                _response.Result = "Рахунок успішно створено. Очікуйте на підтвердження реєстрації нашими менеджерами.";
                 _response.IsSuccess = true;
                 _response.StatusCode = HttpStatusCode.OK;
 
-                return CreatedAtRoute(nameof(GetPersonalBankAccount), new { id = bankAccount.AccountId }, _response);
+                return Ok(_response);
             }
 
             catch (Exception ex)
@@ -206,7 +230,71 @@ namespace PayBridgeAPI.Controllers
                     throw;
                 }
             }
+        }
 
+        [HttpPatch("UpdatePersonalBankAccountPartially")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> UpdatePersonalBankAccountPartially(int id, JsonPatchDocument<PersonalBankAccountUpdateDTO> patchDTO)
+        {
+            try
+            {
+                if(patchDTO == null)
+                {
+                    throw new ArgumentException("Помилка. Тіло запиту є null.");
+                }
+
+                if(id <= 0)
+                {
+                    throw new ArgumentException("Помилка. Ідентифікатор рахунку не може бути меншим або рівним 0");
+                }
+
+                var existingAccount = await _personalAccountRepository.GetValueAsync(filter: a => a.AccountId == id, isTracked : false);
+
+                if(existingAccount == null)
+                {
+                    throw new NullReferenceException("Помилка. Рахунку за даним ідентифікатором не знайдено");
+                }
+
+                PersonalBankAccountUpdateDTO updateDTO = new()
+                {
+                    AccountType = existingAccount.AccountType,
+                    IsActive = existingAccount.IsActive,
+                    Status = existingAccount.Status,
+                    BankCards = existingAccount.BankCards
+                };
+
+                patchDTO.ApplyTo(updateDTO);
+
+                PersonalBankAccount bankAccount = new()
+                {
+                    AccountId = existingAccount.AccountId,
+                    AccountNumber = existingAccount.AccountNumber,
+                    AccountType = updateDTO.AccountType,
+                    IsActive = updateDTO.IsActive,
+                    Status = updateDTO.Status,
+                    AccountOwnerId = existingAccount.AccountOwnerId,
+                    BankId = existingAccount.BankId,
+                    BankCards = existingAccount.BankCards,
+                    RegistrationDate = existingAccount.RegistrationDate,
+                };
+
+                await _personalAccountRepository.UpdateAccount(bankAccount);
+                await _personalAccountRepository.SaveChanges();
+
+                _response.Result = "Рахунок був успішно оновлений!";
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
+            }
+
+            catch(Exception ex)
+            {
+                _response.ErrorMessages.Add(ex.Message);
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.IsSuccess = false;
+                return BadRequest(_response);
+            }
         }
 
         [HttpGet("GetCorporateBankAccounts")]

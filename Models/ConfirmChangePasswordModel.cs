@@ -2,7 +2,6 @@
 {
     public class ConfirmChangePasswordModel
     {
-        public string UserId { get; set; }
         public string Login { get; set; }
         public string PasswordToken { get; set; }
         public string NewPassword { get; set; }

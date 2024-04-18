@@ -10,6 +10,7 @@ using PayBridgeAPI.Models.DTO;
 using PayBridgeAPI.Models.User;
 using PayBridgeAPI.Repository.UserRepo;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace PayBridgeAPI.Controllers
@@ -22,6 +23,30 @@ namespace PayBridgeAPI.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _emailSender;
         protected APIResponse _response;
+
+        private static string GetShortenedToken(string token)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
+                return Convert.ToBase64String(hashBytes)
+                    .Replace("+", "-")
+                    .Replace("/", "_")
+                    .TrimEnd('=');
+            }
+        }
+
+        private static string DecodeShortenedToken(string shortenedToken)
+        {
+            int missingPadding = (4 - shortenedToken.Length % 4) % 4;
+            shortenedToken = shortenedToken.PadRight(shortenedToken.Length + missingPadding, '=');
+
+            shortenedToken = shortenedToken.Replace("-", "+").Replace("_", "/");
+
+            byte[] hashBytes = Convert.FromBase64String(shortenedToken);
+
+            return Encoding.UTF8.GetString(hashBytes);
+        }
         
 
         public UserController(IUserRepository userRepository, UserManager<ApplicationUser> userManager, IEmailSender emailSender)
@@ -133,11 +158,11 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpPost("ConfirmEmail")]
+        [HttpPost("ConfirmEmailRequest")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> ConfirmEmail([FromBody]EmailConfirmation confirmModel)
+        public async Task<ActionResult<APIResponse>> ConfirmEmailRequest([FromBody]EmailConfirmationRequest confirmModel)
         {
             try
             {
@@ -163,9 +188,9 @@ namespace PayBridgeAPI.Controllers
                 confirmToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(confirmToken));
 
                 await _emailSender.SendEmailAsync(confirmModel.Email, "Підтвердження електронної пошти в сервісі PayBridge",
-                    $@"<span>Вітаємо! Нами було отримано запит на підтвердження даної електронної пошти в нашому сервісі. Будь-ласка, введіть даний токен підвтердження в відповідне поле в формі: <h5>{confirmToken}</h5></span>");
+                    $@"<span>Вітаємо! Нами було отримано запит на підтвердження даної електронної пошти в нашому сервісі. Будь-ласка, перейдіть за <a href='http://localhost:5173/emailConfirmation/{confirmToken}'>посиланням</a> для підтвердження Вашої електронної пошти</span>");
                 _response.StatusCode = HttpStatusCode.OK;
-                _response.Result = "Email has been sent successfully";
+                _response.Result = "Запит на підтвердження електронної пошти надіслано на E-Mail вказаний при реєстрації.";
 
                 return Ok(_response);
             }
@@ -179,20 +204,20 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpPost("ConfirmEmailPost")]
+        [HttpPost("ConfirmEmail")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> ConfirmEmailPost(string userId, string token)
+        public async Task<ActionResult<APIResponse>> ConfirmEmail([FromBody]EmailConfirmation confirmation)
         {
             try
             {
-                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+                if (string.IsNullOrEmpty(confirmation.UserId) || string.IsNullOrEmpty(confirmation.Token))
                 {
                     throw new ArgumentException("Сталась помилка. Серед параметрів запиту є null.");
                 }
 
-                var userQuery = await _userManager.FindByIdAsync(userId);
+                var userQuery = await _userManager.FindByIdAsync(confirmation.UserId);
 
                 if (userQuery == null )
                 {
@@ -200,7 +225,7 @@ namespace PayBridgeAPI.Controllers
                 }
 
 
-                var decodeToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+                var decodeToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(confirmation.Token));
 
                 var result = await _userManager.ConfirmEmailAsync(userQuery, decodeToken);
 
@@ -209,14 +234,14 @@ namespace PayBridgeAPI.Controllers
                     await _emailSender.SendEmailAsync(userQuery.Email, "Електронну пошту підтверджено в сервісі PayBridge",
                     $@"<span>Вітаємо! Ви успішно підтвердили електронну пошту в нашому сервісі. Дякуємо за співпрацю!");
                     _response.StatusCode = HttpStatusCode.OK;
-                    _response.Result = "Email has been sent successfully";
+                    _response.Result = "Вітаємо! Ви успішно електронну пошту в нашому сервісі. Тепер Ви можете реєструвати власні рахунки та виконувати операції за ними.";
 
                     return Ok(_response);
                 }
 
                 else
                 {
-                    throw new InvalidOperationException("Сталась помилка з підтвердженням EMail");
+                    throw new InvalidOperationException("Сталась помилка з підтвердженням E-Mail");
                 }
             }
 
@@ -234,7 +259,7 @@ namespace PayBridgeAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> ForgotPassword([FromBody]string login)
+        public async Task<ActionResult<APIResponse>> ForgotPassword(string login)
         {
             try
             {
@@ -257,9 +282,9 @@ namespace PayBridgeAPI.Controllers
                 var token = await _userManager.GeneratePasswordResetTokenAsync(userByLogin);
                 token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
-                await _emailSender.SendEmailAsync(userByLogin.Email, "Запит на скидання паролю", $@"Вітаємо! Ми отримали запит на скидання паролю з Вашого аккаунту. Перейдіть за <a href='https://localhost:5173/profile/changePassword/?token={token}'><h6>посиланням</h6></a> для подальшого процесу скидання паролю. Якщо Ви не робили такий запит, просто проігноруйте дане повідомлення");
+                await _emailSender.SendEmailAsync(userByLogin.Email, "Запит на скидання паролю", $@"Вітаємо! Ми отримали запит на скидання паролю з Вашого аккаунту. Перейдіть за <a href='http://localhost:5173/changePassword/{userByLogin.Email}/{token}'><h6>посиланням</h6></a> для подальшого процесу скидання паролю. Якщо Ви не робили такий запит, просто проігноруйте дане повідомлення");
 
-                _response.Result = "E-Mail з скидання паролю було успішно надіслано";
+                _response.Result = "E-Mail з скидання паролю було успішно надіслано.";
                 _response.StatusCode = HttpStatusCode.OK;
                 return Ok(_response);
             }
@@ -281,18 +306,10 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(passwordModel.UserId) || string.IsNullOrEmpty(passwordModel.Login))
+                if (string.IsNullOrEmpty(passwordModel.Login))
                 {
                     throw new ArgumentException("Сталась помилка. Тіло запиту є null");
                 }
-
-                var userById = await _userManager.FindByIdAsync(passwordModel.UserId);
-
-                if (userById == null)
-                {
-                    throw new NullReferenceException("Сталась помилка. Користувача не знайдено / користувача не авторизовано.");
-                }
-
 
                 ApplicationUser userByLogin = await _userManager.FindByNameAsync(passwordModel.Login);
                 if (userByLogin == null)
@@ -303,10 +320,11 @@ namespace PayBridgeAPI.Controllers
                         throw new NullReferenceException("Помилка. Користувача за вказаним логіном не існує.");
                     }
                 }
+                bool passwordCheck;
 
-                if(string.IsNullOrEmpty(passwordModel.PasswordToken) && !string.IsNullOrEmpty(passwordModel.OldPassword))
+                if (string.IsNullOrEmpty(passwordModel.PasswordToken) && !string.IsNullOrEmpty(passwordModel.OldPassword))
                 {
-                    bool passwordCheck = await _userManager.CheckPasswordAsync(userByLogin, passwordModel.OldPassword);
+                    passwordCheck = await _userManager.CheckPasswordAsync(userByLogin, passwordModel.OldPassword);
 
                     if (!passwordCheck)
                     {
@@ -314,7 +332,7 @@ namespace PayBridgeAPI.Controllers
                     }
                 }
 
-                else
+                else if(string.IsNullOrEmpty(passwordModel.PasswordToken) && string.IsNullOrEmpty(passwordModel.OldPassword))
                 {
                     throw new InvalidOperationException("При зміні паролю сталась помилка.");
                 }
@@ -361,16 +379,9 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(passwordModel.UserId) || string.IsNullOrEmpty(passwordModel.Login))
+                if (string.IsNullOrEmpty(passwordModel.Login))
                 {
                     throw new ArgumentException("Сталась помилка. Тіло запиту є null");
-                }
-
-                var userById = await _userManager.FindByIdAsync(passwordModel.UserId);
-
-                if (userById == null)
-                {
-                    throw new NullReferenceException("Сталась помилка. Користувача не знайдено / користувача не авторизовано.");
                 }
 
 

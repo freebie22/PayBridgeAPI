@@ -55,6 +55,7 @@ namespace PayBridgeAPI.Controllers
                         LastName = manager.LastName,
                         MiddleName = manager.MiddleName,
                         Email = manager.User.Email,
+                        EmailConfirmed = manager.User.EmailConfirmed,
                         PhoneNumber = manager.User.PhoneNumber,
                         Position = manager.Position,
                         IsActive = manager.IsActive,
@@ -78,15 +79,15 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpGet("GetManager/{id:int}")]
+        [HttpGet("GetManager/{id:maxlength(36)}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetManager(int id)
+        public async Task<ActionResult<APIResponse>> GetManager(string id)
         {
             try
             {
-                var query = await _repository.GetValueAsync(filter: q => q.ManagerId == id, include: q => q.Include(q => q.User));
+                var query = await _repository.GetValueAsync(filter: q => q.UserId == id, include: q => q.Include(q => q.User));
 
                 if (query == null)
                 {
@@ -99,6 +100,7 @@ namespace PayBridgeAPI.Controllers
                     FirstName = query.FirstName,
                     LastName = query.LastName,
                     MiddleName = query.MiddleName,
+                    EmailConfirmed = query.User.EmailConfirmed,
                     Email = query.User.Email,
                     PhoneNumber = query.User.PhoneNumber,
                     Position = query.Position,

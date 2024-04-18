@@ -147,6 +147,7 @@ else
     });
 }
 
+
 app.UseHttpsRedirection();
 
 

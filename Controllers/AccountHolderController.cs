@@ -66,11 +66,13 @@ namespace PayBridgeAPI.Controllers
                 {
                     holders.Add(new PersonalAccountHolderDTO()
                     {
+                       AccountId = holder.AccountId,
                        FirstName = holder.FirstName,
                        LastName = holder.LastName,
                        MiddleName = holder.MiddleName ?? "Не вказано",
                        DateOfBirth = holder.DateOfBirth.ToLongDateString(),
                        Email = holder.User.Email,
+                       EmailConfirmed = holder.User.EmailConfirmed,
                        PhoneNumber = holder.User.PhoneNumber,
                        PostalCode = holder.PostalCode.ToString(),
                        Country = holder.Country,
@@ -121,11 +123,13 @@ namespace PayBridgeAPI.Controllers
 
                 PersonalAccountHolderDTO account = new PersonalAccountHolderDTO()
                 {
+                    AccountId = holder.AccountId,
                     FirstName = holder.FirstName,
                     LastName = holder.LastName,
                     MiddleName = holder.MiddleName ?? "Не вказано",
                     DateOfBirth = holder.DateOfBirth.ToLongDateString(),
                     Email = holder.User.Email,
+                    EmailConfirmed = holder.User.EmailConfirmed,
                     PhoneNumber = holder.User.PhoneNumber,
                     PostalCode = holder.PostalCode.ToString(),
                     Country = holder.Country,

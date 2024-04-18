@@ -13,7 +13,6 @@ namespace PayBridgeAPI.Models.DTO
         public string AccountType { get; set; }
         public bool IsActive { get; set; }
         public string Status { get; set; }
-        public string RegistratedByManager { get; set; }
         public string BankName { get; set; }
         public ICollection<BankCardDTO> BankCards { get; set; }
         public string RegistrationDate { get; set; }
