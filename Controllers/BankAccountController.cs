@@ -30,11 +30,22 @@ namespace PayBridgeAPI.Controllers
         [HttpGet("GetBankCards")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetBankCards()
+        public async Task<ActionResult<APIResponse>> GetBankCards([FromQuery]int? accountHolderId)
         {
             try
             {
-                var bankCardsQuery = await _bankCardRepository.GetAllValues(orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner));
+
+                IList<BankCard> bankCardsQuery = new List<BankCard>();
+
+                if(accountHolderId != null || accountHolderId <= 0)
+                {
+                    bankCardsQuery = await _bankCardRepository.GetAllValues(filter: b => b.Account.AccountOwnerId == accountHolderId ,orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner).Include(b => b.Account.Bank));
+                }
+
+                else
+                {
+                    bankCardsQuery = await _bankCardRepository.GetAllValues(orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner).Include(b => b.Account.Bank));
+                }
 
                 if (bankCardsQuery.Count == 0)
                 {
@@ -50,6 +61,7 @@ namespace PayBridgeAPI.Controllers
                         CardNumber = bankCard.CardNumber,
                         ExpiryDate = bankCard.ExpiryDate.Month < 10 ? $"0{bankCard.ExpiryDate.Month}/{bankCard.ExpiryDate.Year % 100}" : $"{bankCard.ExpiryDate.Month}/{bankCard.ExpiryDate.Year % 100}",
                         OwnerCredentials = $"{bankCard.Account.AccountOwner.LastName} {bankCard.Account.AccountOwner.FirstName[0]}.{bankCard.Account.AccountOwner.MiddleName[0]}.",
+                        BankEmitent = bankCard.Account.Bank.ShortBankName,
                         CurrencyType = bankCard.CurrencyType,
                         Balance = bankCard.Balance,
                         IsActive = bankCard.IsActive,
@@ -80,7 +92,7 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var bankCardQuery = await _bankCardRepository.GetValueAsync(filter: b => b.BankCardId == id,orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner));
+                var bankCardQuery = await _bankCardRepository.GetValueAsync(filter: b => b.BankCardId == id,orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner).Include(b => b.Account.Bank));
 
                 if (bankCardQuery == null)
                 {
@@ -93,6 +105,7 @@ namespace PayBridgeAPI.Controllers
                     CardNumber = bankCardQuery.CardNumber,
                     ExpiryDate = bankCardQuery.ExpiryDate.Month < 10 ? $"0{bankCardQuery.ExpiryDate.Month}/{bankCardQuery.ExpiryDate.Year % 100}" : $"{bankCardQuery.ExpiryDate.Month}/{bankCardQuery.ExpiryDate.Year % 100}",
                     OwnerCredentials = $"{bankCardQuery.Account.AccountOwner.LastName} {bankCardQuery.Account.AccountOwner.FirstName[0]}.{bankCardQuery.Account.AccountOwner.MiddleName[0]}.",
+                    BankEmitent = bankCardQuery.Account.Bank.ShortBankName,
                     CurrencyType = bankCardQuery.CurrencyType,
                     Balance = bankCardQuery.Balance,
                     IsActive = bankCardQuery.IsActive,
@@ -138,7 +151,7 @@ namespace PayBridgeAPI.Controllers
                 {
                     BankCardId = newBankCardId + 1,
                     CardNumber = bankCardDTO.CardNumber,
-                    ExpiryDate = DateTime.ParseExact(bankCardDTO.ExpiryDate, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    //ExpiryDate = DateTime.ParseExact(bankCardDTO.ExpiryDate, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
                     CVC = bankCardDTO.CVC,
                     CurrencyType = bankCardDTO.CurrencyType,
                     Balance = bankCardDTO.Balance,
@@ -146,6 +159,22 @@ namespace PayBridgeAPI.Controllers
                     BankAccountId = bankCardDTO.BankAccountId,
                     RegistrationDate = DateTime.Now
                 };
+
+                string[] bankCardExpiryDate = bankCardDTO.ExpiryDate.Split('/');
+                int month = int.Parse(bankCardExpiryDate[0]);
+                int year = int.Parse("20" + bankCardExpiryDate[1]);
+
+                if(month < 0 || month > 12)
+                {
+                    throw new ArgumentException("Помилка. Ви ввели неправильний місяць. Зверніть увагу, що місяць має бути від 01 до 12");
+                }
+
+                if (year < DateTime.Now.Year || year > (DateTime.Now.Year +10))
+                {
+                    throw new ArgumentException("Помилка. Ви ввели неправильний рік. Зверніть увагу, що місяць має бути не менший за теперішній, але не більший чим на 10 років");
+                }
+
+                bankCard.ExpiryDate = new DateTime(year, month, 1);
 
                 await _bankCardRepository.CreateAsync(bankCard);
                 await _bankCardRepository.SaveChangesAsync();
@@ -159,7 +188,7 @@ namespace PayBridgeAPI.Controllers
             
             catch(Exception ex)
             {
-                if(ex is ArgumentNullException || ex is InvalidOperationException)
+                if(ex is ArgumentNullException || ex is InvalidOperationException || ex is ArgumentException)
                 {
                     _response.ErrorMessages.Add(ex.Message);
                     _response.IsSuccess = false;

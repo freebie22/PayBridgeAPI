@@ -10,6 +10,7 @@ namespace PayBridgeAPI.Models.DTO.BankCardDTOs
         public string CardNumber { get; set; }
         public string ExpiryDate { get; set; }
         public int CVC { get; set; }
+        public string BankEmitent { get; set; }
         public string OwnerCredentials { get; set; }
         public string CurrencyType { get; set; }
         public decimal Balance { get; set; }
