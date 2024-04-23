@@ -52,7 +52,8 @@ namespace PayBridgeAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<APIResponse>> GetAllUserToUserTransactions(
             [FromQuery(Name = "currencyCode")]string currencyCode = "",
-            [FromQuery(Name = "transactionNumber")]string transactionNumber = "")
+            [FromQuery(Name = "transactionNumber")]string transactionNumber = "",
+            [FromQuery(Name = "accountId")]int? accountId = null)
         {
             try
             {
@@ -63,6 +64,17 @@ namespace PayBridgeAPI.Controllers
                     transactionsQuery = await _userToUserRepo.GetAllTransactions(
                     predicate:
                     t => t.CurrencyCode == currencyCode,
+                    include:
+                    t => t
+                    .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
+                    .Include(t => t.ReceiverBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankCard.Account.Bank));
+                }
+
+                if(accountId != null && accountId > 0)
+                {
+                    transactionsQuery = await _userToUserRepo.GetAllTransactions(
+                    predicate:
+                    t => t.Sender.AccountId == accountId || t.Receiver.AccountId == accountId,
                     include:
                     t => t
                     .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
@@ -135,16 +147,16 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpGet("GetUserToUserTransaction/{id:int}")]
+        [HttpGet("GetUserToUserTransaction")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetUserToUserTransaction(int id)
+        public async Task<ActionResult<APIResponse>> GetUserToUserTransaction([FromQuery]string transactionNumber = "")
         {
             try
             {
                 var transactionQuery = await _userToUserRepo.GetSingleTransaction(
                     predicate:
-                    t => t.TransactionId == id,
+                    t => t.TransactionNumber == transactionNumber,
                     include:
                     t => t
                     .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
