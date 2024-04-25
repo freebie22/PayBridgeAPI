@@ -10,6 +10,8 @@
         public string ReceiverCredentials { get; set; }
         public string ReceiverBankCardNumber { get; set; }
         public string ReceiverBankEmitent { get; set; }
+        public int SenderHolderId { get; set; }
+        public int ReceiverHolderId { get; set; }
         public string CurrencyCode { get; set; }
         public decimal Amount { get; set; } 
         public string TransactionType { get; set; }

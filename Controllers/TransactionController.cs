@@ -13,6 +13,7 @@ using Stripe;
 using System.Net;
 using PayBridgeAPI.Utility;
 using PayBridgeAPI.Repository.CompanyBankAssetRepository;
+using PayBridgeAPI.Models.MainModels;
 
 namespace PayBridgeAPI.Controllers
 {
@@ -64,6 +65,8 @@ namespace PayBridgeAPI.Controllers
                     transactionsQuery = await _userToUserRepo.GetAllTransactions(
                     predicate:
                     t => t.CurrencyCode == currencyCode,
+                    orderBy: 
+                    t => t.OrderByDescending(t => t.DateOfTransaction),
                     include:
                     t => t
                     .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
@@ -75,6 +78,8 @@ namespace PayBridgeAPI.Controllers
                     transactionsQuery = await _userToUserRepo.GetAllTransactions(
                     predicate:
                     t => t.Sender.AccountId == accountId || t.Receiver.AccountId == accountId,
+                    orderBy:
+                    t => t.OrderByDescending(t => t.DateOfTransaction),
                     include:
                     t => t
                     .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
@@ -86,6 +91,8 @@ namespace PayBridgeAPI.Controllers
                     transactionsQuery = await _userToUserRepo.GetAllTransactions(
                     predicate:
                     t => t.TransactionNumber == transactionNumber,
+                    orderBy:
+                    t => t.OrderByDescending(t => t.DateOfTransaction),
                     include:
                     t => t
                     .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
@@ -95,6 +102,8 @@ namespace PayBridgeAPI.Controllers
                 else
                 {
                    transactionsQuery = await _userToUserRepo.GetAllTransactions(
+                   orderBy:
+                   t => t.OrderByDescending(t => t.DateOfTransaction),
                    include:
                    t => t
                    .Include(t => t.SenderBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.SenderBankCard.Account.Bank)
@@ -120,6 +129,8 @@ namespace PayBridgeAPI.Controllers
                         ReceiverCredentials = $"{transaction.Receiver.AccountOwner.LastName} {transaction.Receiver.AccountOwner.FirstName[0]}.{transaction.Receiver.AccountOwner.MiddleName[0]}",
                         ReceiverBankCardNumber = transaction.ReceiverBankCard.CardNumber,
                         ReceiverBankEmitent = transaction.Receiver.Bank.ShortBankName,
+                        SenderHolderId = transaction.Sender.AccountOwner.AccountId,
+                        ReceiverHolderId = transaction.Receiver.AccountOwner.AccountId,
                         CurrencyCode = transaction.CurrencyCode,
                         Amount = transaction.Amount,
                         TransactionType = transaction.TransactionType,
@@ -177,6 +188,8 @@ namespace PayBridgeAPI.Controllers
                     ReceiverCredentials = $"{transactionQuery.Receiver.AccountOwner.LastName} {transactionQuery.Receiver.AccountOwner.FirstName[0]}.{transactionQuery.Receiver.AccountOwner.MiddleName[0]}",
                     ReceiverBankCardNumber = transactionQuery.ReceiverBankCard.CardNumber,
                     ReceiverBankEmitent = transactionQuery.Receiver.Bank.ShortBankName,
+                    SenderHolderId = transactionQuery.Sender.AccountOwner.AccountId,
+                    ReceiverHolderId = transactionQuery.Receiver.AccountOwner.AccountId,
                     CurrencyCode = transactionQuery.CurrencyCode,
                     Amount = transactionQuery.Amount,
                     TransactionType = transactionQuery.TransactionType,
@@ -203,6 +216,19 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
+        private static string TransformDateTime(DateTime time)
+        {
+            int month, year;
+
+            month = time.Month;
+
+            year = time.Year % 100;
+
+            string newTimeFormat = $"{month}/{year}";
+
+            return newTimeFormat;
+        }
+
 
         [HttpPost("MakeUserToUserTransaction")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -217,10 +243,32 @@ namespace PayBridgeAPI.Controllers
                     throw new NullReferenceException("Error. Your request body was null.");
                 }
 
-                var senderAccount = await _bankCardRepo.GetValueAsync(
+                BankCard senderAccount = new();
+
+
+                if(transactionDTO.RechargingType == RechargingTypes.RechargingAnotherUserCard)
+                {
+                    string[] expiryDate = transactionDTO.SenderExpiryDate.Split('/');
+
+                    int month = int.Parse(expiryDate[0]);
+                    int year = int.Parse("20" + expiryDate[1]);
+
+                    DateTime dateToSearch = new DateTime(year, month, 1);
+
+                    senderAccount = await _bankCardRepo.GetValueAsync(
+                    filter: a => a.CardNumber == transactionDTO.SenderBankCardNumber && a.ExpiryDate == dateToSearch && a.CVC == transactionDTO.SenderCVC,
+                    include: a => a.Include(a => a.Account).ThenInclude(a => a.AccountOwner)
+                    );
+                }
+
+                else if(transactionDTO.RechargingType == RechargingTypes.RechargingOwnCard)
+                {
+                    senderAccount = await _bankCardRepo.GetValueAsync(
                     filter: a => a.CardNumber == transactionDTO.SenderBankCardNumber,
                     include: a => a.Include(a => a.Account).ThenInclude(a => a.AccountOwner)
                     );
+                }
+
 
                 var receiverAccount = await _bankCardRepo.GetValueAsync(
                     filter: a => a.CardNumber == transactionDTO.ReceiverBankCardNumber,
@@ -229,52 +277,38 @@ namespace PayBridgeAPI.Controllers
 
                 if(senderAccount == null || receiverAccount == null )
                 {
-                    throw new NullReferenceException("Error. Receiver or sender account wasn't found by your request. Please, check bank card info.");
+                    throw new NullReferenceException("Помилка. Отримувача або відправника за вказаною інформацією не знайдено. Будь-ласка, перевірте введені Вами дані.");
                 }
 
-                if((senderAccount.Balance - transactionDTO.Amount) <= 0)
+                //var currencyResponse = await _baseService.SendAsync(new APIRequest()
+                //{
+                //    //Development URL
+                //    RequestURL = "https://localhost:7112/api/currency/GetCurrencyRate",
+                //    RequestType = API_Request_Type.GET
+                //});
+
+                //IEnumerable<CurrencyDTO> currency = JsonConvert.DeserializeObject<IEnumerable<CurrencyDTO>>(currencyResponse);
+
+                if ((senderAccount.Balance - transactionDTO.Amount) <= 0)
                 {
-                    throw new InvalidOperationException("Error. Sender account balance cannot afford transaction ammount");
+                    throw new InvalidOperationException("Помилка. На балансі даної карти немає такої суми.");
                 }
 
 
-                var currencyResponse = await _baseService.SendAsync(new APIRequest()
-                {
-                    //Development URL
-                    RequestURL = "https://localhost:7112/api/currency/GetCurrencyRate",
-                    RequestType = API_Request_Type.GET
-                });
-
-                IEnumerable<CurrencyDTO> currency = JsonConvert.DeserializeObject<IEnumerable<CurrencyDTO>>(currencyResponse);
-
-                long? amount = null;
-
-                switch (transactionDTO.CurrencyCode)
-                {
-                    case "uah":
-                        amount = (int)transactionDTO.Amount * 100;
-                        break;
-                    case "usd":
-                        amount = (int)transactionDTO.Amount * 100;
-                        break;
-                    case "eur":
-                        amount = (int)transactionDTO.Amount * 100;
-                        break;
-                }
 
                 StripeConfiguration.ApiKey = _configuration["StripeSettings:SecretKey"];
                 PaymentIntentCreateOptions options = new PaymentIntentCreateOptions()
                 {
-                    Amount = amount,
-                    Currency = transactionDTO.CurrencyCode.ToLower(),
+                    Amount = (long)transactionDTO.Amount * 100,
+                    Currency = "uah",
                     PaymentMethodTypes = new List<string>()
                     {
                         "card"
                     },
                     Description = $"Переказ від" +
-                    $" {receiverAccount.Account.AccountOwner.LastName}" +
-                    $" {receiverAccount.Account.AccountOwner.FirstName[0]}." +
-                    $"{receiverAccount.Account.AccountOwner.MiddleName[0]}." +
+                    $" {senderAccount.Account.AccountOwner.LastName}" +
+                    $" {senderAccount.Account.AccountOwner.FirstName[0]}." +
+                    $"{senderAccount.Account.AccountOwner.MiddleName[0]}." +
                     $" за номером карти {transactionDTO.ReceiverBankCardNumber}",
                 };
 
@@ -300,22 +334,8 @@ namespace PayBridgeAPI.Controllers
                 await _userToUserRepo.CreateTransaction(transaction);
                 await _userToUserRepo.SaveChanges();
 
-                switch(transaction.CurrencyCode)
-                {
-                    case "uah":
-                        senderAccount.Balance -= transaction.Amount;
-                        receiverAccount.Balance += transaction.Amount;
-                        break;
-                    case "usd":
-                        senderAccount.Balance -= transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
-                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
-                        break;
-                    case "eur":
-                        senderAccount.Balance -= transaction.Amount * currency.Where(c => string.Equals(c.CurrencyCode.ToLower(), "eur")).Select(c => c.PriceBuy).FirstOrDefault();
-                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "eur").Select(c => c.PriceBuy).FirstOrDefault();
-                        break;
-                }
-
+                senderAccount.Balance -= transaction.Amount;
+                receiverAccount.Balance += transaction.Amount;
 
                 await _bankCardRepo.UpdateRangeAsync(senderAccount, receiverAccount);
 

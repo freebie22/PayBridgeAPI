@@ -151,7 +151,6 @@ namespace PayBridgeAPI.Controllers
                 {
                     BankCardId = newBankCardId + 1,
                     CardNumber = bankCardDTO.CardNumber,
-                    //ExpiryDate = DateTime.ParseExact(bankCardDTO.ExpiryDate, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
                     CVC = bankCardDTO.CVC,
                     CurrencyType = bankCardDTO.CurrencyType,
                     Balance = bankCardDTO.Balance,
