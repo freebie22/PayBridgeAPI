@@ -11,6 +11,7 @@ using PayBridgeAPI.Models.User;
 using PayBridgeAPI.Repository;
 using PayBridgeAPI.Repository.CompanyBankAssetRepository;
 using PayBridgeAPI.Repository.MainRepo;
+using PayBridgeAPI.Repository.ResponsiblePeopleRepo;
 using PayBridgeAPI.Repository.TransactionRepo;
 using PayBridgeAPI.Repository.UserRepo;
 using PayBridgeAPI.Services.AzureBlobs;
@@ -115,6 +116,7 @@ builder.Services.AddScoped<ICompanyToUserTransactionRepository, CompanyToUserTra
 builder.Services.AddScoped<ICompanyToCompanyTransactionRepository, CompanyToCompanyTransactionRepository>();
 builder.Services.AddScoped<IBankCardRepository, BankCardRepository>();
 builder.Services.AddScoped<ICompanyBankAssetRepository, CompanyBankAssetRepository>();
+builder.Services.AddScoped<IResponsiblePersonRepository, ResponsiblePeopleRepository>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddHttpClient<IBaseService, BaseService>();
 builder.Services.AddHttpClient<ICurrencyService, CurrencyService>();

@@ -21,6 +21,5 @@ namespace PayBridgeAPI.Models.DTO.CorporateAccountHolderDTOs
         public string StreetAddress { get; set; }
         public bool IsActive { get; set; }
         public string Status { get; set; }
-        public string RegisteredByManager { get; set; }
     }
 }

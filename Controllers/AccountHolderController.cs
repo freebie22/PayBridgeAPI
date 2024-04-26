@@ -11,6 +11,7 @@ using PayBridgeAPI.Models.DTO.CorporateAccountHolderDTOs;
 using PayBridgeAPI.Models.MainModels;
 using PayBridgeAPI.Models.User;
 using PayBridgeAPI.Repository;
+using PayBridgeAPI.Repository.ResponsiblePeopleRepo;
 using Stripe.Climate;
 using System.Globalization;
 using System.Net;
@@ -24,14 +25,16 @@ namespace PayBridgeAPI.Controllers
     {
         private readonly IPersonalAccountRepository _personalRepo;
         private readonly ICorporateAccountRepository _corporateRepo;
+        private readonly IResponsiblePersonRepository _responsibleRepo;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly PayBridgeDbContext _context;
         protected APIResponse _response;
 
-        public AccountHolderController(IPersonalAccountRepository personalRepo, ICorporateAccountRepository corporateRepo, PayBridgeDbContext context, UserManager<ApplicationUser> userManager)
+        public AccountHolderController(IPersonalAccountRepository personalRepo, ICorporateAccountRepository corporateRepo, IResponsiblePersonRepository responsibleRepo, PayBridgeDbContext context, UserManager<ApplicationUser> userManager)
         {
             _personalRepo = personalRepo;
             _corporateRepo = corporateRepo;
+            _responsibleRepo = responsibleRepo;
             _context = context;
             _userManager = userManager;
             _response = new APIResponse();
@@ -385,7 +388,7 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var query = await _corporateRepo.GetAllValues(include: q => q.Include(q => q.Manager));
+                var query = await _corporateRepo.GetAllValues(include: q => q.Include(q => q.ResponsiblePerson));
 
                 if (query.Count == 0)
                 {
@@ -411,8 +414,7 @@ namespace PayBridgeAPI.Controllers
                        City = holder.City,
                        StreetAddress = holder.StreetAddress,
                        IsActive = holder.IsActive,
-                       Status = holder.Status,
-                       RegisteredByManager = $"{holder.Manager.LastName} " +  $"{holder.Manager.FirstName} " + $"{holder.Manager.MiddleName}",
+                       Status = holder.Status
                     });
                 }
 
@@ -439,7 +441,7 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
-                var holder = await _corporateRepo.GetValueAsync(filter: a => a.AccountId == id, include: q => q.Include(q => q.Manager));
+                var holder = await _corporateRepo.GetValueAsync(filter: a => a.AccountId == id, include: q => q.Include(q => q.ResponsiblePerson));
 
                 if (holder == null)
                 {
@@ -462,8 +464,7 @@ namespace PayBridgeAPI.Controllers
                     City = holder.City,
                     StreetAddress = holder.StreetAddress,
                     IsActive = holder.IsActive,
-                    Status = holder.Status,
-                    RegisteredByManager = $"{holder.Manager.LastName} " + $"{holder.Manager.FirstName} " + $"{holder.Manager.MiddleName}"
+                    Status = holder.Status
                 };
 
                 _response.Result = account;
@@ -497,7 +498,14 @@ namespace PayBridgeAPI.Controllers
 
                 if (existingAccount != null)
                 {
-                    throw new InvalidOperationException("Error. Account holder with this company is already exists. Company code must be unique, and should not have duplicates in DB");
+                    throw new InvalidOperationException("Підприємство з даним кодом ЄДРПОУ вже існує в нашій базі.");
+                }
+
+                var relatedResponsiblePerson = await _corporateRepo.GetValueAsync(filter: r => r.ResponsiblePersonId == holderDTO.ResponsiblePersonId);
+
+                if(relatedResponsiblePerson != null)
+                {
+                    throw new InvalidOperationException("Дана відповідальна особа вже прив'язана до іншої існуючої компанії");
                 }
 
                 CorporateAccountHolder accountHolder = new CorporateAccountHolder()
@@ -516,7 +524,7 @@ namespace PayBridgeAPI.Controllers
                     StreetAddress = holderDTO.StreetAddress,
                     IsActive = holderDTO.IsActive,
                     Status = holderDTO.Status,
-                    ManagerId = holderDTO.ManagerId
+                    ResponsiblePersonId = holderDTO.ResponsiblePersonId
                 };
 
                 await _corporateRepo.CreateAsync(accountHolder);
@@ -564,7 +572,7 @@ namespace PayBridgeAPI.Controllers
                     throw new ArgumentException("Error. Id of request and id of account don't correspond.");
                 }
 
-                var existingAccount = await _corporateRepo.GetValueAsync(filter: m => m.AccountId == id, isTracked: false, include: q => q.Include(q => q.Manager));
+                var existingAccount = await _corporateRepo.GetValueAsync(filter: m => m.AccountId == id, isTracked: false);
 
                 if (existingAccount == null)
                 {
@@ -588,7 +596,7 @@ namespace PayBridgeAPI.Controllers
                     StreetAddress = holderDTO.StreetAddress,
                     IsActive = holderDTO.IsActive,
                     Status = holderDTO.Status,
-                    ManagerId = existingAccount.ManagerId
+                    ResponsiblePersonId = existingAccount.ResponsiblePersonId
                 };
 
 
@@ -649,7 +657,7 @@ namespace PayBridgeAPI.Controllers
                     City = existingAccount.City,
                     StreetAddress = existingAccount.StreetAddress,
                     IsActive = existingAccount.IsActive,
-                    Status = existingAccount.Status
+                    Status = existingAccount.Status,
                 };
 
                 patchDTO.ApplyTo(holderDTO);
@@ -671,7 +679,7 @@ namespace PayBridgeAPI.Controllers
                     StreetAddress = holderDTO.StreetAddress,
                     IsActive = holderDTO.IsActive,
                     Status = holderDTO.Status,
-                    ManagerId = existingAccount.ManagerId
+                    ResponsiblePersonId = existingAccount.ResponsiblePersonId
                 };
 
 

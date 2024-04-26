@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PayBridgeAPI.Data;
 
@@ -11,9 +12,11 @@ using PayBridgeAPI.Data;
 namespace PayBridgeAPI.Migrations
 {
     [DbContext(typeof(PayBridgeDbContext))]
-    partial class PayBridgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240425152906_removedRelationInCorporateAccountHolder")]
+    partial class removedRelationInCorporateAccountHolder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -508,9 +511,6 @@ namespace PayBridgeAPI.Migrations
                     b.Property<int>("PostalCode")
                         .HasColumnType("int");
 
-                    b.Property<int>("ResponsiblePersonId")
-                        .HasColumnType("int");
-
                     b.Property<string>("ShortCompanyName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -528,8 +528,6 @@ namespace PayBridgeAPI.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("AccountId");
-
-                    b.HasIndex("ResponsiblePersonId");
 
                     b.ToTable("CorporateAccountHolders");
                 });
@@ -733,44 +731,6 @@ namespace PayBridgeAPI.Migrations
                     b.HasIndex("BankId");
 
                     b.ToTable("PersonalBankAccounts");
-                });
-
-            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.ResponsiblePerson", b =>
-                {
-                    b.Property<int>("ResponsiblePersonId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ResponsiblePersonId"));
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("MiddleName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PositionInCompany")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("ResponsiblePersonId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ResponsiblePeople");
                 });
 
             modelBuilder.Entity("PayBridgeAPI.Models.Transcations.CompanyToCompanyTransaction", b =>
@@ -1156,17 +1116,6 @@ namespace PayBridgeAPI.Migrations
                     b.Navigation("CorporateAccount");
                 });
 
-            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateAccountHolder", b =>
-                {
-                    b.HasOne("PayBridgeAPI.Models.MainModels.ResponsiblePerson", "ResponsiblePerson")
-                        .WithMany()
-                        .HasForeignKey("ResponsiblePersonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ResponsiblePerson");
-                });
-
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateBankAccount", b =>
                 {
                     b.HasOne("PayBridgeAPI.Models.MainModels.CorporateAccountHolder", "AccountOwner")
@@ -1233,17 +1182,6 @@ namespace PayBridgeAPI.Migrations
                     b.Navigation("AccountOwner");
 
                     b.Navigation("Bank");
-                });
-
-            modelBuilder.Entity("PayBridgeAPI.Models.MainModels.ResponsiblePerson", b =>
-                {
-                    b.HasOne("PayBridgeAPI.Models.User.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PayBridgeAPI.Models.Transcations.CompanyToCompanyTransaction", b =>

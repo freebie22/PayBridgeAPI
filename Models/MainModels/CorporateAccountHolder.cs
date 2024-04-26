@@ -38,9 +38,8 @@ namespace PayBridgeAPI.Models.MainModels
         public bool IsActive { get; set; }
         [Required]
         public string Status { get; set; }
-        [Required]
-        public int ManagerId { get; set; }
-        [Required]
-        public virtual Manager Manager { get; set; }
+        public int ResponsiblePersonId { get; set; }
+        [ForeignKey(nameof(ResponsiblePersonId))]
+        public virtual ResponsiblePerson ResponsiblePerson { get; set; }
     }
 }

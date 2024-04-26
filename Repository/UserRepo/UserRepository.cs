@@ -137,6 +137,7 @@ namespace PayBridgeAPI.Repository.UserRepo
                     await _roleManager.CreateAsync(new IdentityRole(Roles.ADMIN_ROLE));
                     await _roleManager.CreateAsync(new IdentityRole(Roles.MANAGER_ROLE));
                     await _roleManager.CreateAsync(new IdentityRole(Roles.CLIENT_ROLE));
+                    await _roleManager.CreateAsync(new IdentityRole(Roles.RESPONSIBLE_PERSON_ROLE));
                 }
 
                 switch(registerInfo.Role)
@@ -148,6 +149,9 @@ namespace PayBridgeAPI.Repository.UserRepo
                         await _userManager.AddToRoleAsync(user, registerInfo.Role);
                         break;
                     case Roles.CLIENT_ROLE:
+                        await _userManager.AddToRoleAsync(user, registerInfo.Role);
+                        break;
+                    case Roles.RESPONSIBLE_PERSON_ROLE:
                         await _userManager.AddToRoleAsync(user, registerInfo.Role);
                         break;
                 }

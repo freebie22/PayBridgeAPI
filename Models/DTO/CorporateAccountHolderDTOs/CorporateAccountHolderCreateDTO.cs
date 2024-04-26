@@ -35,6 +35,6 @@ namespace PayBridgeAPI.Models.DTO.CorporateAccountHolderDTOs
         [Required]
         public string Status { get; set; }
         [Required]
-        public int ManagerId { get; set; }
+        public int ResponsiblePersonId { get; set; }
     }
 }

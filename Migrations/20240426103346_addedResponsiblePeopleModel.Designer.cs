@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PayBridgeAPI.Data;
 
@@ -11,9 +12,11 @@ using PayBridgeAPI.Data;
 namespace PayBridgeAPI.Migrations
 {
     [DbContext(typeof(PayBridgeDbContext))]
-    partial class PayBridgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240426103346_addedResponsiblePeopleModel")]
+    partial class addedResponsiblePeopleModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -508,9 +511,6 @@ namespace PayBridgeAPI.Migrations
                     b.Property<int>("PostalCode")
                         .HasColumnType("int");
 
-                    b.Property<int>("ResponsiblePersonId")
-                        .HasColumnType("int");
-
                     b.Property<string>("ShortCompanyName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -527,9 +527,12 @@ namespace PayBridgeAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("AccountId");
 
-                    b.HasIndex("ResponsiblePersonId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("CorporateAccountHolders");
                 });
@@ -1158,13 +1161,11 @@ namespace PayBridgeAPI.Migrations
 
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateAccountHolder", b =>
                 {
-                    b.HasOne("PayBridgeAPI.Models.MainModels.ResponsiblePerson", "ResponsiblePerson")
+                    b.HasOne("PayBridgeAPI.Models.User.ApplicationUser", "ResponsibleUser")
                         .WithMany()
-                        .HasForeignKey("ResponsiblePersonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
 
-                    b.Navigation("ResponsiblePerson");
+                    b.Navigation("ResponsibleUser");
                 });
 
             modelBuilder.Entity("PayBridgeAPI.Models.MainModels.CorporateBankAccount", b =>

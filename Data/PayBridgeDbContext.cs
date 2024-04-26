@@ -22,6 +22,7 @@ namespace PayBridgeAPI.Data
         public DbSet<CorporateAccountHolder> CorporateAccountHolders { get; set; }
         public DbSet<PersonalAccountHolder> PersonalAccountHolders { get; set; }
         public DbSet<Manager> Managers { get; set; }
+        public DbSet<ResponsiblePerson> ResponsiblePeople { get; set; }
         public DbSet<UserToUserTransaction> UserToUserTransactions { get; set; }
         public DbSet<CompanyBankAsset> CompanyBankAssets { get; set; }
         public DbSet<CompanyToUserTransaction> CompanyToUserTransactions { get; set; }
