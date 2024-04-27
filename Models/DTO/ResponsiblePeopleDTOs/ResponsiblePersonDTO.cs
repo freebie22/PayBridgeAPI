@@ -9,6 +9,7 @@
         public string Email { get; set; }
         public bool EmailConfirmed { get; set; }
         public string PhoneNumber { get; set; }
+        public string CompanyFullName { get; set; }
         public string PositionInCompany { get; set; }
         public bool IsActive { get; set; }
 

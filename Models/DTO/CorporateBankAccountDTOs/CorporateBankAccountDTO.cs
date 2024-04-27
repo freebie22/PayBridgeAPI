@@ -13,7 +13,6 @@ namespace PayBridgeAPI.Models.DTO.CorporateBankAccountDTOs
         public string CurrencyType { get; set; }
         public string CompanyOwnerShortName { get; set; }
         public string CompanyCode { get; set; }
-        public string RegisteredByManager { get; set; }
         public string BankName { get; set; }
         public string RegistrationDate { get; set; }
         public ICollection<CompanyBankAssetDTO> BankAssets { get; set; } = new List<CompanyBankAssetDTO>();

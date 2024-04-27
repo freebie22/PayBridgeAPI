@@ -24,13 +24,15 @@ namespace PayBridgeAPI.Controllers
     public class ResponsiblePeopleController : ControllerBase
     {
         private readonly IResponsiblePersonRepository _repository;
+        private readonly ICorporateAccountRepository _corporateAccountRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private APIResponse _response;
 
-        public ResponsiblePeopleController(IResponsiblePersonRepository repository, UserManager<ApplicationUser> userManager)
+        public ResponsiblePeopleController(IResponsiblePersonRepository repository, ICorporateAccountRepository corporateAccountRepository, UserManager<ApplicationUser> userManager)
         {
             _repository = repository;
             _userManager = userManager;
+            _corporateAccountRepository = corporateAccountRepository; 
             _response = new APIResponse();
         }
 
@@ -93,8 +95,10 @@ namespace PayBridgeAPI.Controllers
 
                 if (query == null)
                 {
-                    throw new NullReferenceException($"Error. No managers have been found in database by id {userId}");
+                    throw new NullReferenceException($"Жодної відповідальної особи не було знайдено в базі даних за Вашим запитом.");
                 }
+
+                var companyInCharge = await _corporateAccountRepository.GetValueAsync(filter: q => q.ResponsiblePersonId == query.ResponsiblePersonId, isTracked: false);
 
                 ResponsiblePersonDTO person = new ResponsiblePersonDTO()
                 {
@@ -107,6 +111,7 @@ namespace PayBridgeAPI.Controllers
                     PhoneNumber = query.User.PhoneNumber,
                     PositionInCompany = query.PositionInCompany,
                     IsActive = query.IsActive,
+                    CompanyFullName = companyInCharge.FullCompanyName,
                 };
 
                 _response.Result = person;

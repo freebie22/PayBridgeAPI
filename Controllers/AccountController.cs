@@ -307,7 +307,7 @@ namespace PayBridgeAPI.Controllers
             {
                 var query = await _corporateBankAccountRepository.GetAllValues(
                     include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.Manager).Include(q => q.BankAssets)
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.BankAssets)
                     );
 
                 if (query.Count == 0)
@@ -328,7 +328,6 @@ namespace PayBridgeAPI.Controllers
                         CompanyOwnerShortName = bankAccount.AccountOwner.ShortCompanyName,
                         CompanyCode = bankAccount.AccountOwner.CompanyCode,
                         AccountType = bankAccount.AccountType,
-                        RegisteredByManager = $"{bankAccount.Manager.LastName} " + $"{bankAccount.Manager.FirstName} " + $"{bankAccount.Manager.MiddleName}",
                         BankName = bankAccount.Bank.ShortBankName,
                         RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
                     };
@@ -380,12 +379,12 @@ namespace PayBridgeAPI.Controllers
                     filter:
                     q => q.AccountId == id,
                     include:
-                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank).Include(q => q.Manager)
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank)
                     );
 
                 if (bankAccount == null)
                 {
-                    throw new NullReferenceException($"Error. No bank accounts have been found in database by id {id}");
+                    throw new NullReferenceException("");
                 }
 
                 CorporateBankAccountDTO bankAccountDTO = new CorporateBankAccountDTO()
@@ -396,7 +395,6 @@ namespace PayBridgeAPI.Controllers
                     CompanyOwnerShortName = bankAccount.AccountOwner.ShortCompanyName,
                     CompanyCode = bankAccount.AccountOwner.CompanyCode,
                     AccountType = bankAccount.AccountType,
-                    RegisteredByManager = $"{bankAccount.Manager.LastName} " + $"{bankAccount.Manager.FirstName} " + $"{bankAccount.Manager.MiddleName}",
                     BankName = bankAccount.Bank.ShortBankName,
                     RegistrationDate = bankAccount.RegistrationDate.ToLongDateString(),
                 };
@@ -456,9 +454,8 @@ namespace PayBridgeAPI.Controllers
                     AccountType = bankAccountDTO.AccountType,
                     CurrencyType = bankAccountDTO.CurrencyType,
                     IsActive = false,
-                    Status = "Очікує на активацію менеджером платіжної системи",
+                    Status = "Очікує на активацію менеджером сервісу",
                     AccountOwnerId = bankAccountDTO.CompanyOwnerId,
-                    ManagerId = bankAccountDTO.ManagerId,
                     BankId = bankAccountDTO.BankId,
                 };
 

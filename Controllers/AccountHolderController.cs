@@ -184,7 +184,7 @@ namespace PayBridgeAPI.Controllers
                     FirstName = holderDTO.FirstName,
                     LastName = holderDTO.LastName,
                     MiddleName = holderDTO.MiddleName ?? "Не вказано",
-                    DateOfBirth = DateTime.ParseExact(holderDTO.DateOfBirth, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    DateOfBirth = DateTime.ParseExact(holderDTO.DateOfBirth, "dd.mm.yyyy", CultureInfo.GetCultureInfo("uk-UA")),
                     PostalCode = holderDTO.PostalCode,
                     Country = holderDTO.Country,
                     State = holderDTO.State,
@@ -414,7 +414,8 @@ namespace PayBridgeAPI.Controllers
                        City = holder.City,
                        StreetAddress = holder.StreetAddress,
                        IsActive = holder.IsActive,
-                       Status = holder.Status
+                       Status = holder.Status,
+                       ResponsiblePersonId = holder.ResponsiblePersonId
                     });
                 }
 
@@ -433,19 +434,19 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpGet("GetCorporateAccountHolder/{id:int}")]
+        [HttpGet("GetCorporateAccountHolder")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetCorporateAccountHolder(int id)
+        public async Task<ActionResult<APIResponse>> GetCorporateAccountHolder([FromQuery]int responsiblePersonId)
         {
             try
             {
-                var holder = await _corporateRepo.GetValueAsync(filter: a => a.AccountId == id, include: q => q.Include(q => q.ResponsiblePerson));
+                var holder = await _corporateRepo.GetValueAsync(filter: a => a.ResponsiblePersonId == responsiblePersonId, include: q => q.Include(q => q.ResponsiblePerson));
 
                 if (holder == null)
                 {
-                    throw new NullReferenceException($"Error. No account holders have been found in database by id {id}");
+                    throw new NullReferenceException($"За даною відповідальною особою не знайдено жодної компанії.");
                 }
 
                 CorporateAccountHolderDTO account = new CorporateAccountHolderDTO()
@@ -464,7 +465,8 @@ namespace PayBridgeAPI.Controllers
                     City = holder.City,
                     StreetAddress = holder.StreetAddress,
                     IsActive = holder.IsActive,
-                    Status = holder.Status
+                    Status = holder.Status,
+                    ResponsiblePersonId = holder.ResponsiblePersonId
                 };
 
                 _response.Result = account;
@@ -516,7 +518,7 @@ namespace PayBridgeAPI.Controllers
                     ContactEmail = holderDTO.ContactEmail,
                     ContactPhone = holderDTO.ContactPhone,
                     EmailConfirmed = holderDTO.EmailConfirmed,
-                    DateOfEstablishment = DateTime.ParseExact(holderDTO.DateOfEstablishment, "dd MMMM yyyy 'р.'", CultureInfo.GetCultureInfo("uk-UA")),
+                    DateOfEstablishment = DateTime.ParseExact(holderDTO.DateOfEstablishment, "dd.mm.yyyy", CultureInfo.GetCultureInfo("uk-UA")),
                     PostalCode = holderDTO.PostalCode,
                     Country = holderDTO.Country,
                     State = holderDTO.State,

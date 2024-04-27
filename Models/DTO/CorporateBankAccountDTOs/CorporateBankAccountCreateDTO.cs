@@ -15,8 +15,6 @@ namespace PayBridgeAPI.Models.DTO.CorporateBankAccountDTOs
         [Required]
         public int CompanyOwnerId { get; set; }
         [Required]
-        public int ManagerId { get; set; }
-        [Required]
         public int BankId { get; set; }
     }
 }

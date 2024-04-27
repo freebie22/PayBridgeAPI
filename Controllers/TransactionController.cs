@@ -73,11 +73,12 @@ namespace PayBridgeAPI.Controllers
                     .Include(t => t.ReceiverBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankCard.Account.Bank));
                 }
 
-                if(accountId != null && accountId > 0)
+
+                if (!string.IsNullOrEmpty(transactionNumber))
                 {
                     transactionsQuery = await _userToUserRepo.GetAllTransactions(
                     predicate:
-                    t => t.Sender.AccountId == accountId || t.Receiver.AccountId == accountId,
+                    t => t.TransactionNumber == transactionNumber,
                     orderBy:
                     t => t.OrderByDescending(t => t.DateOfTransaction),
                     include:
@@ -86,11 +87,11 @@ namespace PayBridgeAPI.Controllers
                     .Include(t => t.ReceiverBankCard).ThenInclude(t => t.Account).ThenInclude(t => t.AccountOwner).Include(t => t.ReceiverBankCard.Account.Bank));
                 }
 
-                if (!string.IsNullOrEmpty(transactionNumber))
+                if (accountId != null && accountId > 0)
                 {
                     transactionsQuery = await _userToUserRepo.GetAllTransactions(
                     predicate:
-                    t => t.TransactionNumber == transactionNumber,
+                    t => t.Sender.AccountOwner.AccountId == accountId || t.Receiver.AccountOwner.AccountId == accountId,
                     orderBy:
                     t => t.OrderByDescending(t => t.DateOfTransaction),
                     include:
@@ -113,7 +114,7 @@ namespace PayBridgeAPI.Controllers
 
                 if (transactionsQuery.Count == 0)
                 {
-                    throw new NullReferenceException("Error. No user to user transaction were found in database by your request");
+                    throw new NullReferenceException("За Вашим обліковим записом транзакцій не знайдено.");
                 }
 
                 List<UserToUserTransactionDTO> transactions = new();

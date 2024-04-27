@@ -39,7 +39,7 @@ namespace PayBridgeAPI.Controllers
 
                 if(accountHolderId != null || accountHolderId <= 0)
                 {
-                    bankCardsQuery = await _bankCardRepository.GetAllValues(filter: b => b.Account.AccountOwnerId == accountHolderId ,orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner).Include(b => b.Account.Bank));
+                    bankCardsQuery = await _bankCardRepository.GetAllValues(filter: b => b.Account.AccountId == accountHolderId ,orderBy: b => b.OrderBy(b => b.RegistrationDate), include: b => b.Include(b => b.Account.AccountOwner).Include(b => b.Account.Bank));
                 }
 
                 else
