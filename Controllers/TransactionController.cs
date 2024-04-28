@@ -1076,72 +1076,38 @@ namespace PayBridgeAPI.Controllers
 
                 if (senderAccount == null || receiverAccount == null)
                 {
-                    throw new NullReferenceException("Error. Receiver or sender account wasn't found by your request. Please, check bank card or IBAN Number info.");
+                    throw new NullReferenceException("За введеними Вами IBAN-номерами не було знайдено відправника або отримувача.");
                 }
 
                 if ((senderAccount.Balance - transactionDTO.Amount) <= 0)
                 {
-                    throw new InvalidOperationException("Error. Sender account balance cannot afford transaction ammount");
+                    throw new InvalidOperationException("На балансі Вашого розрахункового рахунку не вистачає коштів для даної операції.");
                 }
 
 
-                var currencyResponse = await _baseService.SendAsync(new APIRequest()
-                {
-                    //Development URL
-                    RequestURL = "https://localhost:7112/api/currency/GetCurrencyInfo",
-                    RequestType = API_Request_Type.GET
-                });
+               
 
-                IEnumerable<CurrencyDTO> currency = JsonConvert.DeserializeObject<IEnumerable<CurrencyDTO>>(currencyResponse);
-
-                long? amount = null;
-
-                switch (transactionDTO.CurrencyCode.ToLower())
-                {
-                    case "uah":
-                        amount = (int)transactionDTO.Amount * 100;
-                        break;
-                    case "usd":
-                        amount = (int)transactionDTO.Amount * 100;
-                        break;
-                    case "eur":
-                        amount = (int)transactionDTO.Amount * 100;
-                        break;
-                }
-
-                CompanyToUserTransaction transaction = new CompanyToUserTransaction()
+                CompanyToCompanyTransaction transaction = new CompanyToCompanyTransaction()
                 {
                     CurrencyCode = transactionDTO.CurrencyCode,
-                    Amount = (decimal)amount / 100,
-                    TransactionType = "Переказ з рахунку юридчної особи/ФОП на рахунок іншої юридичної особи/ФОП",
+                    Amount = transactionDTO.Amount,
+                    TransactionType = transactionDTO.TransactionType,
                     DateOfTransaction = DateTime.Now,
                     Description = transactionDTO.Description,
                     Fee = 0.0m,
                     CompanySenderId = senderAccount.CorporateAccount.AccountId,
-                    ReceiverId = receiverAccount.CorporateAccount.AccountId,
-                    ReceiverBankCardId = receiverAccount.AssetId,
+                    ReceiverBankAssetId = receiverAccount.AssetId,
                     SenderBankAssetId = senderAccount.AssetId,
+                    CompanyReceiverId = receiverAccount.CorporateAccount.AccountId,
                     Status = "Транзакція успішна",
                 };
 
-                await _companyToUserRepo.CreateTransaction(transaction);
-                await _companyToUserRepo.SaveChanges();
+                await _companyToCompanyRepo.CreateTransaction(transaction);
+                await _companyToCompanyRepo.SaveChanges();
 
-                switch (transaction.CurrencyCode)
-                {
-                    case "uah":
-                        senderAccount.Balance -= transaction.Amount;
-                        receiverAccount.Balance += transaction.Amount;
-                        break;
-                    case "usd":
-                        senderAccount.Balance -= transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
-                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "usd").Select(c => c.PriceBuy).FirstOrDefault();
-                        break;
-                    case "eur":
-                        senderAccount.Balance -= transaction.Amount * currency.Where(c => string.Equals(c.CurrencyCode.ToLower(), "eur")).Select(c => c.PriceBuy).FirstOrDefault();
-                        receiverAccount.Balance += transaction.Amount * currency.Where(c => c.CurrencyCode.ToLower() == "eur").Select(c => c.PriceBuy).FirstOrDefault();
-                        break;
-                }
+                senderAccount.Balance -= transaction.Amount;
+                receiverAccount.Balance += transaction.Amount;
+
 
 
                 await _companyBankAssetRepo.UpdateAsync(senderAccount);

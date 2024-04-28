@@ -204,18 +204,33 @@ namespace PayBridgeAPI.Controllers
         [HttpGet("GetBankAssets")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<APIResponse>> GetBankAssets()
+        public async Task<ActionResult<APIResponse>> GetBankAssets([FromQuery]int? responsiblePersonId = null)
         {
             try
             {
-                var bankAssetsQuery = await _bankAssetRepository.GetAllValues(
+                IList<CompanyBankAsset> bankAssetsQuery = new List<CompanyBankAsset>();
+
+                if(responsiblePersonId != null)
+                {
+                    bankAssetsQuery = await _bankAssetRepository.GetAllValues(
+                    filter: 
+                    a => a.CorporateAccount.AccountOwner.ResponsiblePersonId == responsiblePersonId,
                     include:
                     a => a.Include(a => a.CorporateAccount).ThenInclude(a => a.AccountOwner).Include(a => a.CorporateAccount).ThenInclude(a => a.Bank)
                     );
+                }
+
+                else
+                {
+                    bankAssetsQuery = await _bankAssetRepository.GetAllValues(
+                    include:
+                    a => a.Include(a => a.CorporateAccount).ThenInclude(a => a.AccountOwner).Include(a => a.CorporateAccount).ThenInclude(a => a.Bank)
+                    );
+                }
 
                 if (bankAssetsQuery.Count == 0)
                 {
-                    throw new NullReferenceException("Error. No company bank assets were found by your request");
+                    throw new NullReferenceException("За Вашим запитом не знайдено жодного розрахункового рахунку.");
                 }
 
                 List<CompanyBankAssetDTO> bankAssets = new();
@@ -252,7 +267,7 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpGet("GetBankAssets/{id:int}")]
+        [HttpGet("GetBankAsset/{id:int}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<APIResponse>> GetBankAsset(int id)
@@ -316,24 +331,14 @@ namespace PayBridgeAPI.Controllers
                     throw new ArgumentException($"Error. Bank asset with IBAN Number of {bankAssetCreateDTO.IBAN_Number} already exists. Please, choose another IBAN Number to continue");
                 }
 
-                IList<CompanyBankAsset> bankAssets = await _bankAssetRepository.GetAllValues(isTracked: false, orderBy: b => b.OrderBy(b => b.AssetId));
-                int bankAssetId = 0;
-                if(bankAssets.Count == 0)
-                {
-                    bankAssetId = 1;
-                }
-                else
-                {
-                    bankAssetId = bankAssets.LastOrDefault().AssetId;
-                }
 
                 CompanyBankAsset bankAsset = new()
                 {
                     IBAN_Number = bankAssetCreateDTO.IBAN_Number,
-                    CurrencyType = bankAssetCreateDTO.CurrencyType,
+                    CurrencyType = "uah",
                     Balance = default,
-                    IsActive = bankAssetCreateDTO.IsActive,
-                    Status = bankAssetCreateDTO.Status,
+                    IsActive = true,
+                    Status = "Рахунок активний",
                     CorporateAccountId = bankAssetCreateDTO.CorporateAccountId,
                 };
 

@@ -10,7 +10,6 @@ using PayBridgeAPI.Models.MainModels;
 using PayBridgeAPI.Repository;
 using System.Globalization;
 using System.Net;
-
 namespace PayBridgeAPI.Controllers
 {
     [ApiController]
@@ -19,13 +18,15 @@ namespace PayBridgeAPI.Controllers
     {
         private readonly IPersonalBankAccountRepository _personalAccountRepository;
         private readonly ICorporateBankAccountRepository _corporateBankAccountRepository;
+        private readonly ICorporateAccountRepository _corporateAccountRepository;
         protected APIResponse _response;
 
-        public AccountController(IPersonalBankAccountRepository personalAccountRepository, ICorporateBankAccountRepository corporateBankAccountRepository)
+        public AccountController(IPersonalBankAccountRepository personalAccountRepository, ICorporateBankAccountRepository corporateBankAccountRepository, ICorporateAccountRepository corporateAccountRepository)
         {
             _personalAccountRepository = personalAccountRepository;
             _response = new APIResponse();
             _corporateBankAccountRepository = corporateBankAccountRepository;
+            _corporateAccountRepository = corporateAccountRepository;
         }
 
         [HttpGet("GetPersonalBankAccounts")]
@@ -367,24 +368,39 @@ namespace PayBridgeAPI.Controllers
             }
         }
 
-        [HttpGet("GetCorporateBankAccount/{id:int}")]
+        [HttpGet("GetCorporateBankAccount")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<APIResponse>> GetCorporateBankAccount(int id)
+        public async Task<ActionResult<APIResponse>> GetCorporateBankAccount([FromQuery]int? accountId = null, [FromQuery]int? accountOwnerId = null)
         {
             try
             {
-                var bankAccount = await _corporateBankAccountRepository.GetValueAsync(
+                CorporateBankAccount bankAccount = null;
+
+                if (accountId != null && accountId > 0)
+                {
+                    bankAccount = await _corporateBankAccountRepository.GetValueAsync(
                     filter:
-                    q => q.AccountId == id,
+                    q => q.AccountId == accountId,
                     include:
                         q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank)
                     );
+                }
+
+                if(accountOwnerId != null && accountOwnerId > 0)
+                {
+                    bankAccount = await _corporateBankAccountRepository.GetValueAsync(
+                    filter:
+                    q => q.AccountOwner.ResponsiblePersonId == accountOwnerId,
+                    include:
+                        q => q.Include(q => q.AccountOwner).Include(q => q.AccountOwner).Include(q => q.Bank)
+                    );
+                }
 
                 if (bankAccount == null)
                 {
-                    throw new NullReferenceException("");
+                    throw new NullReferenceException("Банківський рахунок за Вашим запитом не знайдено.");
                 }
 
                 CorporateBankAccountDTO bankAccountDTO = new CorporateBankAccountDTO()
@@ -448,11 +464,18 @@ namespace PayBridgeAPI.Controllers
                     throw new ArgumentNullException(nameof(bankAccountDTO), "Error. Request body was null");
                 }
 
+                var accountHolder = await _corporateBankAccountRepository.GetValueAsync(filter: a => a.AccountOwnerId == bankAccountDTO.CompanyOwnerId);
+
+                if(accountHolder != null)
+                {
+                    throw new ArgumentException("За даною юридичною особою вже закріплено банківський рахунок.");
+                }
+
 
                 CorporateBankAccount bankAccount = new CorporateBankAccount()
                 {
-                    AccountType = bankAccountDTO.AccountType,
-                    CurrencyType = bankAccountDTO.CurrencyType,
+                    AccountType = "Рахунок компанії/ФОП",
+                    CurrencyType = "uah",
                     IsActive = false,
                     Status = "Очікує на активацію менеджером сервісу",
                     AccountOwnerId = bankAccountDTO.CompanyOwnerId,
@@ -472,7 +495,7 @@ namespace PayBridgeAPI.Controllers
 
             catch (Exception ex)
             {
-                if (ex is ArgumentNullException || ex is InvalidOperationException)
+                if (ex is ArgumentNullException || ex is InvalidOperationException || ex is ArgumentException)
                 {
                     _response.StatusCode = HttpStatusCode.BadRequest;
                     _response.IsSuccess = false;
