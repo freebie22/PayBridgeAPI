@@ -91,6 +91,9 @@ namespace PayBridgeAPI.Controllers
         {
             try
             {
+
+                var existingUser = await _userManager.FindByIdAsync(userId);
+
                 var query = await _repository.GetValueAsync(filter: q => q.UserId == userId, include: q => q.Include(q => q.User));
 
                 if (query == null)
@@ -111,7 +114,7 @@ namespace PayBridgeAPI.Controllers
                     PhoneNumber = query.User.PhoneNumber,
                     PositionInCompany = query.PositionInCompany,
                     IsActive = query.IsActive,
-                    CompanyFullName = companyInCharge.FullCompanyName,
+                    CompanyFullName = companyInCharge != null ? companyInCharge.FullCompanyName : "Відповідальна особа не прив'язана до компанії",
                 };
 
                 _response.Result = person;
